@@ -1,7 +1,7 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
 
-tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6)
+tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
 
 library(flowCore)
@@ -34,10 +34,10 @@ if (tmpIsV3p6) {
 ### corrected parse_flowjo
 
 if (tmpIsV3p6) {
-    parse_flowjo_CytoML <- function (files, wsp_file, group = "All Samples", plot = FALSE) 
+    parse_flowjo_CytoML <- function (files, wsp_file, group = "All Samples", plot = FALSE)
     {
         wsp <- flowWorkspace::openWorkspace(wsp_file)
-        o <- capture.output(gates <- suppressMessages(CytoML::parseWorkspace(wsp, 
+        o <- capture.output(gates <- suppressMessages(CytoML::parseWorkspace(wsp,
                                                                              group)))
         files_in_wsp <- gates@data@origSampleVector
         counts <- as.numeric(gsub(".*_([0-9]*)$", "\\1", files_in_wsp))
@@ -46,16 +46,16 @@ if (tmpIsV3p6) {
             print(paste0("Processing ", file))
             file_id <- grep(gsub(".*/", "", file), files_in_wsp)
             if (length(file_id) == 0) {
-                stop("File not found. Files available: ", gsub("_[0-9]*$", 
+                stop("File not found. Files available: ", gsub("_[0-9]*$",
                     "\n", files_in_wsp))
             }
-            gate_names <- flowWorkspace::getNodes(gates[[file_id]], 
+            gate_names <- flowWorkspace::getNodes(gates[[file_id]],
                 path = "auto")
-            gatingMatrix <- matrix(FALSE, nrow = counts[file_id], 
-                ncol = length(gate_names), dimnames = list(NULL, 
+            gatingMatrix <- matrix(FALSE, nrow = counts[file_id],
+                ncol = length(gate_names), dimnames = list(NULL,
                     gate_names))
             for (gate in gate_names) {
-                gatingMatrix[, gate] <- flowWorkspace::getIndiceMat(gates[[file_id]], 
+                gatingMatrix[, gate] <- flowWorkspace::getIndiceMat(gates[[file_id]],
                     gate)
             }
             ff <- flowWorkspace::getData(gates[[file_id]], "root")
@@ -69,15 +69,15 @@ if (tmpIsV3p6) {
             result <- result[[1]]
         }
         else {
-            result <- list(flowSet = flowCore::flowSet(lapply(result, 
-                function(x) x$flowFrame)), gates = lapply(result, 
+            result <- list(flowSet = flowCore::flowSet(lapply(result,
+                function(x) x$flowFrame)), gates = lapply(result,
                 function(x) x$gates))
         }
         return(result)
     }
 
 ## Seems that PlotLabels diseapear...
-PlotLabels <- function(fsom, 
+PlotLabels <- function(fsom,
                        labels,
                        view="MST",
                        main=NULL,
@@ -89,16 +89,16 @@ PlotLabels <- function(fsom,
                        backgroundLim = NULL,
                        backgroundBreaks = NULL){
   switch(view,
-         MST  = { layout <- fsom$MST$l 
+         MST  = { layout <- fsom$MST$l
          lty <- 1},
          grid = { layout <- as.matrix(fsom$map$grid)
          lty <- 0},
          tSNE = { layout <- fsom$MST$l2
-         lty <- 0}, 
+         lty <- 0},
          stop("The view should be MST, grid or tSNE. tSNE will only work
                    if you specified this when building the MST.")
   )
-  
+
   # Choose background colour
   if(!is.null(backgroundValues)){
     background <- computeBackgroundColor(backgroundValues,backgroundColor,
@@ -106,10 +106,10 @@ PlotLabels <- function(fsom,
   } else {
     background <- NULL
   }
-  
-  igraph::plot.igraph(fsom$MST$graph, 
-                      layout=layout, 
-                      vertex.size=nodeSize, 
+
+  igraph::plot.igraph(fsom$MST$graph,
+                      layout=layout,
+                      vertex.size=nodeSize,
                       vertex.label=labels,
                       vertex.label.cex = fontSize,
                       edge.lty=lty,
@@ -154,9 +154,9 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
                   }) %>%
       unlist()
   pctgs <- table(files, GetClusters(fSOM)) %>%
-      as.matrix() 
+      as.matrix()
   pctgs_meta <- table(files, GetMetaclusters(fSOM,meta = metacl)) %>%
-      as.matrix() 
+      as.matrix()
   if(!is.null(meta_names)) colnames(pctgs_meta) <- meta_names
   return(list("abstgs" = as.matrix(pctgs),
               "abstgs_meta" = as.matrix(pctgs_meta)))
@@ -165,7 +165,7 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
 #return p-value of Tukey test, given metacluster names
 TukeyTestSarah = function(fSOMTable, metaClust){TukeyHSD(aov(as.formula(paste(metaClust,"~ Treatment")),data=fSOMTable))$Treatment[,4]}
 
-## tree representaton of metacluster, given size and marker representation, removing a given number of smallest metacluster 
+## tree representaton of metacluster, given size and marker representation, removing a given number of smallest metacluster
 PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 {
    fSOM4Plot=list(
@@ -184,12 +184,12 @@ PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
     }
     else
         {PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)}
-   
+
 }
 
-## tree representaton of metacluster, given size and marker representation on a subset of samples, removing a given number of smallest metacluster 
+## tree representaton of metacluster, given size and marker representation on a subset of samples, removing a given number of smallest metacluster
 PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm=0)
-{    
+{
     fSOM4Plot=list(
         map=fSOMObject$map,
         prettyColnames=fSOMObject$prettyColnames,
@@ -204,19 +204,19 @@ PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm
         fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))[indexKeep,]
         fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
         fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
-        PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)   
+        PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)
     }
     else {
-    
+
         fSOM4Plot$MST$size = sqrt(clSizes)/max(sqrt(clSizes))*15
         fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))
          PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)
         }
-   
+
 }
 
 
-## marker level represented on metacluster tree, removing a given number of smallest metacluster 
+## marker level represented on metacluster tree, removing a given number of smallest metacluster
 PlotMarkerMSTRm=function(fSOMObject,markerName,mainTitle,nbRm=0)
 {
    fSOM4Plot=list(
@@ -235,10 +235,10 @@ PlotMarkerMSTRm=function(fSOMObject,markerName,mainTitle,nbRm=0)
     }
     else
         {PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)}
-   
+
 }
 
-## marker level represented on metacluster tree, on a subset of samples, removing a given number of smallest metacluster 
+## marker level represented on metacluster tree, on a subset of samples, removing a given number of smallest metacluster
 PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0){
     fSOM4Plot=list(
         map=fSOMObject$map,
@@ -253,7 +253,7 @@ PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0
         fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))[indexKeep,]
         fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
         fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
-        PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle)   
+        PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle)
     }
     else {
     fSOM4Plot$MST$size = sqrt(clSizes)/max(sqrt(clSizes))*15
@@ -296,7 +296,7 @@ buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
     fSOM<-BuildSOM(fSOMDloaded$fSOMData,colsToUse = channels_of_interest,silent = FALSE,xdim=clustDim,ydim=clustDim,rlen=10,init=FALSE,distf=2)
     fSOM<-BuildMST(fSOM,silent = FALSE,tSNE=FALSE)
     fSOM$prettyColnames =  fSOMNicePrettyColNames
-    metacl<-metaClustering_consensus(fSOM$map$codes,k=metaClNb,seed=fSOMSeed)    
+    metacl<-metaClustering_consensus(fSOM$map$codes,k=metaClNb,seed=fSOMSeed)
     PlotStars(fSOM,backgroundValues = as.factor(metacl))
     return(list(fSOMTree = fSOM,metaCl = metacl))
 }
@@ -328,7 +328,7 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable){
             print(paste("Treatment: ",treatName,sep=""))
             fcsFiles=treatmentTable$files[which(treatmentTable$Treatment == treatName)]
             treatIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))
-            PlotMarkerMSTCondRm(TreeMetacl$fSOMTree,uglyName,treatIndex,paste(Title," Marker: ",marker," Treat: ",treatName,sep=""),rmClNb)          
+            PlotMarkerMSTCondRm(TreeMetacl$fSOMTree,uglyName,treatIndex,paste(Title," Marker: ",marker," Treat: ",treatName,sep=""),rmClNb)
         }
     }
     dev.off()
@@ -360,7 +360,7 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM) ## dataframe for box plot
         boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",metaCl,sep=""),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=.8,cex.lab=.5)
         beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",metaCl,sep=""),add=T,cex=.5,col="red")
-    }   
+    }
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
     PvalTable = sapply((1:metaclNumber),function(metaCl)
     {
@@ -370,7 +370,7 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
            if(tukeyPval[index] < 0.0001){return(c("****",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
            else if(tukeyPval[index] < 0.001){return(c("***",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
            else if(tukeyPval[index] < 0.01){return(c("**",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-           else if(tukeyPval[index] < 0.05){return(c("*",strsplit(names(tukeyPval)[index],split = "-")[[1]]))} 
+           else if(tukeyPval[index] < 0.05){return(c("*",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
        }))
        ListSignif = ListSignif[which(sapply(ListSignif,length) > 0)]
        ListSignifPosIndex = lapply(ListSignif,function(hit){
@@ -395,7 +395,7 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
            }
        }
        beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
-       
+
        return(tukeyPval)
    })
    tmpTable=PvalTable[,1]
