@@ -75,7 +75,38 @@ if (tmpIsV3p6) {
         }
         return(result)
     }
-
+    
+## GetClusters ?
+    GetClusters <- function(fsom) {
+      if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
+        fsom <- fsom$FlowSOM
+      }
+      if (class(fsom) != "FlowSOM") {
+        stop("fsom should be a FlowSOM object.")
+      }
+      return(fsom$map$mapping[,1])
+    }
+    
+## GetMetClusters ?
+    GetMetaclusters <- function(fsom, meta = NULL){
+      
+      if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
+        if (is.null(meta) & !is.null(fsom$metaclustering)) {
+          meta <- fsom$metaclustering
+        }
+        fsom <- fsom$FlowSOM 
+      }
+      if (class(fsom) != "FlowSOM"){
+        stop("fsom should be a FlowSOM object.")
+      } 
+      if(is.null(meta)){
+        stop("No metaclustering found.")
+      }
+      
+      return(meta[fsom$map$mapping[,1]])
+    } 
+    
+    
 ## Seems that PlotLabels diseapear...
 PlotLabels <- function(fsom,
                        labels,
