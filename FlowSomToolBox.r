@@ -108,7 +108,7 @@ if (tmpIsV3p6) {
     
     
 ## Seems that PlotLabels diseapear...
-PlotLabels <- function(fsom,
+    PlotLabels <- function(fsom,
                        labels,
                        view="MST",
                        main=NULL,
@@ -119,38 +119,38 @@ PlotLabels <- function(fsom,
                          grDevices::rainbow(n,alpha=0.3)},
                        backgroundLim = NULL,
                        backgroundBreaks = NULL){
-  switch(view,
-         MST  = { layout <- fsom$MST$l
-         lty <- 1},
-         grid = { layout <- as.matrix(fsom$map$grid)
-         lty <- 0},
-         tSNE = { layout <- fsom$MST$l2
-         lty <- 0},
-         stop("The view should be MST, grid or tSNE. tSNE will only work
+        switch(view,
+               MST  = { layout <- fsom$MST$l
+                   lty <- 1},
+               grid = { layout <- as.matrix(fsom$map$grid)
+                   lty <- 0},
+               tSNE = { layout <- fsom$MST$l2
+                   lty <- 0},
+               stop("The view should be MST, grid or tSNE. tSNE will only work
                    if you specified this when building the MST.")
-  )
-
-  # Choose background colour
-  if(!is.null(backgroundValues)){
-    background <- computeBackgroundColor(backgroundValues,backgroundColor,
-                                         backgroundLim, backgroundBreaks)
-  } else {
-    background <- NULL
-  }
-
-  igraph::plot.igraph(fsom$MST$graph,
-                      layout=layout,
-                      vertex.size=nodeSize,
-                      vertex.label=labels,
-                      vertex.label.cex = fontSize,
-                      edge.lty=lty,
-                      mark.groups=background$groups,
-                      mark.col=background$col[background$values],
-                      mark.border=background$col[background$values],
-                      main=main)
-
-}
-
+               )
+        
+                                        # Choose background colour
+        if(!is.null(backgroundValues)){
+            background <- computeBackgroundColor(backgroundValues,backgroundColor,
+                                                 backgroundLim, backgroundBreaks)
+        } else {
+            background <- NULL
+        }
+        
+        igraph::plot.igraph(fsom$MST$graph,
+                            layout=layout,
+                            vertex.size=nodeSize,
+                            vertex.label=labels,
+                            vertex.label.cex = fontSize,
+                            edge.lty=lty,
+                            mark.groups=background$groups,
+                            mark.col=background$col[background$values],
+                            mark.border=background$col[background$values],
+                            main=main)
+        
+    }
+    
 }
 
 # extract meta-clusters count ratio in percent
@@ -196,6 +196,27 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
 #return p-value of Tukey test, given metacluster names
 TukeyTestSarah = function(fSOMTable, metaClust){TukeyHSD(aov(as.formula(paste(metaClust,"~ Treatment")),data=fSOMTable))$Treatment[,4]}
 
+## Plot Meta clusters labels
+PlotLabelsRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
+{
+     fSOM4Plot=list(
+        map=fSOMObject$map,
+        prettyColnames=fSOMObject$prettyColnames,
+       MST=fSOMObject$MST)
+    if (nbRm>0)
+    {
+       indexKeep =  which(fSOMObject$MST$size > sort(fSOMObject$MST$size)[nbRm])
+       indexRemove  = setdiff((1:length(fSOMObject$MST$size)),indexKeep)
+       fSOM4Plot$MST$size=fSOMObject$MST$size[indexKeep]
+       fSOM4Plot$map$medianValues=fSOMObject$map$medianValues[indexKeep,]
+       fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
+       fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
+       PlotLabels(fSOM4Plot,as.factor(metaClustFactors[indexKeep]), main=mainTitle)
+    }
+    else
+        {PlotLabels(fSOM4Plot,as.factor(metaClustFactors), main=mainTitle)}
+    }
+
 ## tree representaton of metacluster, given size and marker representation, removing a given number of smallest metacluster
 PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 {
@@ -218,7 +239,7 @@ PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 
 }
 
-## tree representaton of metacluster, given size and marker representation on a subset of samples, removing a given number of smallest metacluster
+## tree representaton of metacluster, given size and marker representation on a subset of samples given by an list of index, removing a given number of smallest metacluster
 PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm=0)
 {
     fSOM4Plot=list(
@@ -238,17 +259,14 @@ PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm
         PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)
     }
     else {
-
         fSOM4Plot$MST$size = sqrt(clSizes)/max(sqrt(clSizes))*15
         fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))
          PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)
         }
-
 }
 
-
 ## marker level represented on metacluster tree, removing a given number of smallest metacluster
-PlotMarkerMSTRm=function(fSOMObject,markerName,mainTitle,nbRm=0)
+PlotMarkerMSTRm <- function(fSOMObject,markerName,mainTitle,nbRm=0)
 {
    fSOM4Plot=list(
         map=fSOMObject$map,
@@ -265,11 +283,10 @@ PlotMarkerMSTRm=function(fSOMObject,markerName,mainTitle,nbRm=0)
        PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)
     }
     else
-        {PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)}
-
+    {PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)}
 }
 
-## marker level represented on metacluster tree, on a subset of samples, removing a given number of smallest metacluster
+## marker level represented on metacluster tree, on a subset of samples given by an list of index, removing a given number of smallest metacluster
 PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0){
     fSOM4Plot=list(
         map=fSOMObject$map,
@@ -365,6 +382,8 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable){
     dev.off()
 }
 
+## Box plot of metacluster, either percentage or normlized size is Norm = T
+## treatmentTable should contain 
 BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE)
 {
     if (Norm) {
@@ -379,10 +398,11 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
         fSOMnbrs<-pctgs$pctgs_meta
         fSOMnbrs<-fSOMnbrs*100
         PlotLab=paste("% of ",yLab,sep="")
-        }
+    }
     treatmentsFSOM=sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$Treatment[which(treatmentTable$files == fileFCS)]})
     Treatments=unique(treatmentTable$Treatment)
-    treatmentsFSOM=factor(treatmentsFSOM,c(ControlTreatment,setdiff(Treatments,ControlTreatment))) # set control treatment in first
+    print(c(ControlTreatment,setdiff(Treatments,ControlTreatment)))
+    treatmentsFSOM=factor(treatmentsFSOM,levels=c(ControlTreatment,setdiff(Treatments,ControlTreatment))) # set control treatment in first
     if (Norm) {pdf(file=paste(Title,"_BoxPlotNormMetacl.pdf",sep=""))}
     else {pdf(file=paste(Title,"_BoxPlotPercentMetacl.pdf",sep=""))}
     metaclNumber=length(fSOMnbrs[1,])
@@ -396,29 +416,30 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
     PvalTable = sapply((1:metaclNumber),function(metaCl)
     {
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM)
-       tukeyPval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$Treatment[,4]
-       ListSignif=(sapply(1:length(tukeyPval),function(index){
-           if(tukeyPval[index] < 0.0001){return(c("****",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-           else if(tukeyPval[index] < 0.001){return(c("***",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-           else if(tukeyPval[index] < 0.01){return(c("**",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-           else if(tukeyPval[index] < 0.05){return(c("*",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-       }))
-       ListSignif = ListSignif[which(sapply(ListSignif,length) > 0)]
-       ListSignifPosIndex = lapply(ListSignif,function(hit){
-           return(c(which(levels(plotDf$TreatmentFSOM) == hit[2]),which(levels(plotDf$TreatmentFSOM) == hit[3])))})
-       minTr=min(plotDf$PP)
-       maxTr=max(plotDf$PP)
-       boxplot(PP ~ TreatmentFSOM,
-               data=plotDf,main=paste("mtcl",metaCl,sep=""),
-               xlab="",
-               ylab=paste("% of ",yLab,sep=""),
-               cex.axis=.5,
-               cex.main=.8,
-               cex.lab=.5,
-               ylim=c(minTr,length(ListSignif)*abs(maxTr-minTr)*.2+maxTr)
-               )
-       if (length(ListSignif) > 0) {
-           for (signifIndex in (1:length(ListSignif))) {
+        tukeyPval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$Treatment[,4]
+        ListSignif=(sapply(1:length(tukeyPval),function(index){
+            if(tukeyPval[index] < 0.0001){return(c("****",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
+            else if(tukeyPval[index] < 0.001){return(c("***",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
+            else if(tukeyPval[index] < 0.01){return(c("**",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
+            else if(tukeyPval[index] < 0.05){return(c("*",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
+        }))
+        ListSignif = ListSignif[which(sapply(ListSignif,length) > 0)]
+        ListSignifPosIndex = lapply(ListSignif,function(hit){
+            return(c(which(levels(plotDf$TreatmentFSOM) == hit[2]),which(levels(plotDf$TreatmentFSOM) == hit[3])))})
+        minTr=min(plotDf$PP)
+        maxTr=max(plotDf$PP)
+        boxplot(PP ~ TreatmentFSOM,
+                data=plotDf,main=paste("mtcl",metaCl,sep=""),
+                xlab="",
+                ylab=paste("% of ",yLab,sep=""),
+                cex.axis=.5,
+                cex.main=.8,
+                cex.lab=.5,
+                ylim=c(minTr,length(ListSignif)*abs(maxTr-minTr)*.2+maxTr)
+                )
+        if (length(ListSignif) > 0) {
+            for (signifIndex in (1:length(ListSignif))) {
+              ##  print(maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2)
                segments(y0=maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2,
                         x0= ListSignifPosIndex[[signifIndex]][1],x1=ListSignifPosIndex[[signifIndex]][2])
                text(x=(ListSignifPosIndex[[signifIndex]][1]+ListSignifPosIndex[[signifIndex]][2])/2,y=maxTr+(signifIndex-.1)*abs(maxTr-minTr)*.2,
@@ -439,4 +460,7 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
     dev.off()
     if (Norm) {write.table(PvalTable,paste(Title,"_TukeyPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
     else {write.table(PvalTable,paste(Title,"_TukeyPvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}
+    retData=list(fSOMnbrs,PvalTable)
+    names(retData)=c("Sizes","Pval")
+    return(retData)
 }
