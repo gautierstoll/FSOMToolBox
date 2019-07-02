@@ -31,7 +31,7 @@ library(gridExtra)
 if (tmpIsV3p6) {
     library(CytoML)
     }
-### corrected parse_flowjo
+## Internal tool: corrected parse_flowjo
 
 if (tmpIsV3p6) {
     parse_flowjo_CytoML <- function (files, wsp_file, group = "All Samples", plot = FALSE)
@@ -76,7 +76,7 @@ if (tmpIsV3p6) {
         return(result)
     }
     
-## GetClusters ?
+## Internal tool: GetClusters ?
     GetClusters <- function(fsom) {
       if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
         fsom <- fsom$FlowSOM
@@ -87,7 +87,7 @@ if (tmpIsV3p6) {
       return(fsom$map$mapping[,1])
     }
     
-## GetMetClusters ?
+## Internal tool: GetMetClusters ?
     GetMetaclusters <- function(fsom, meta = NULL){
       
       if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
@@ -107,7 +107,7 @@ if (tmpIsV3p6) {
     } 
     
     
-## Seems that PlotLabels diseapear...
+## Internal tool: Seems that PlotLabels diseapear...
     PlotLabels <- function(fsom,
                        labels,
                        view="MST",
@@ -153,7 +153,7 @@ if (tmpIsV3p6) {
     
 }
 
-# extract meta-clusters count ratio in percent
+## Internal tool: extract meta-clusters count ratio in percent
 get_pctgsMT <- function(fSOM,metacl, meta_names = NULL){
   cell_ids <- fSOM$metaData
   files <- sapply(seq_len(length(cell_ids)),
@@ -175,7 +175,7 @@ get_pctgsMT <- function(fSOM,metacl, meta_names = NULL){
               "pctgs_meta" = as.matrix(pctgs_meta)))
 }
 
-# extract absolute count of meta-clusters
+## Internal tool: extract absolute count of meta-clusters
 get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
   cell_ids <- fSOM$metaData
   files <- sapply(seq_len(length(cell_ids)),
@@ -193,10 +193,10 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
               "abstgs_meta" = as.matrix(pctgs_meta)))
 }
 
-#return p-value of Tukey test, given metacluster names
+##Internal tool: return p-value of Tukey test, given metacluster names
 TukeyTestSarah = function(fSOMTable, metaClust){TukeyHSD(aov(as.formula(paste(metaClust,"~ Treatment")),data=fSOMTable))$Treatment[,4]}
 
-## Plot Meta clusters labels
+## User tool: Plot Meta clusters labels
 PlotLabelsRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 {
      fSOM4Plot=list(
@@ -217,7 +217,7 @@ PlotLabelsRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
         {PlotLabels(fSOM4Plot,as.factor(metaClustFactors), main=mainTitle)}
     }
 
-## tree representaton of metacluster, given size and marker representation, removing a given number of smallest metacluster
+## User tool: tree representaton of metacluster, given size and marker representation, removing a given number of smallest metacluster
 PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 {
    fSOM4Plot=list(
@@ -239,7 +239,7 @@ PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 
 }
 
-## tree representaton of metacluster, given size and marker representation on a subset of samples given by an list of index, removing a given number of smallest metacluster
+## User tool: tree representaton of metacluster, given size and marker representation on a subset of samples given by an list of index, removing a given number of smallest metacluster
 PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm=0)
 {
     fSOM4Plot=list(
@@ -265,7 +265,7 @@ PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm
         }
 }
 
-## marker level represented on metacluster tree, removing a given number of smallest metacluster
+## User tool: marker level represented on metacluster tree, removing a given number of smallest metacluster
 PlotMarkerMSTRm <- function(fSOMObject,markerName,mainTitle,nbRm=0)
 {
    fSOM4Plot=list(
@@ -286,7 +286,7 @@ PlotMarkerMSTRm <- function(fSOMObject,markerName,mainTitle,nbRm=0)
     {PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)}
 }
 
-## marker level represented on metacluster tree, on a subset of samples given by an list of index, removing a given number of smallest metacluster
+## User tool: marker level represented on metacluster tree, on a subset of samples given by an list of index, removing a given number of smallest metacluster
 PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0){
     fSOM4Plot=list(
         map=fSOMObject$map,
@@ -311,7 +311,7 @@ PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0
     }
 }
 
-## Download data, given fcs files, FlowJo workspace should in in current environment, FCS directory is inside wd, given with no "/"
+## User tool: Download data, given fcs files, FlowJo workspace should in in current environment, FCS directory is inside wd, given with no "/"
 DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube"){
     flowJoWS=list.files(pattern=".wsp")
     if (length(flowJoWS) > 1)
@@ -332,7 +332,7 @@ DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube"){
     fSOM<-ReadInput(dataGated$flowSet,compensate = FALSE,transform = FALSE,scale = FALSE,scaled.center = TRUE,scaled.scale = TRUE,silent = FALSE)
     return(list(fSOMData=fSOM,flJoDataGated=dataGated))
 }
-## build FSOM tree with the metacluster, plot the tree
+## User tool: build FSOM tree with the metacluster, plot the tree
 buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
 {
     ff<-fSOMDloaded$flJoDataGated$flowSet[[1]]
@@ -349,7 +349,7 @@ buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
     return(list(fSOMTree = fSOM,metaCl = metacl))
 }
 
-## plot figures, use the object created by buildFSOMTree
+## User tool: plot figures, use the object created by buildFSOMTree
 ## the treatmentTable should be a dataframe with two column: "Treatment", "files"
 plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable){
     pdf(file=paste(Title,"_TreatmentTree.pdf",sep=""))
@@ -382,7 +382,7 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable){
     dev.off()
 }
 
-## Box plot of metacluster, either percentage or normlized size is Norm = T
+## User tool: Box plot of metacluster, either percentage or normlized size is Norm = T
 ## treatmentTable should contain 
 BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE)
 {
