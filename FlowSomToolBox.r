@@ -383,7 +383,7 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable){
 }
 
 ## User tool: Box plot of metacluster, either percentage or normlized size is Norm = T
-## treatmentTable should contain 
+## treatmentTable should be a dataframe with two column: "Treatment", "files" (a third one with column "NormalizationFactor" in Norm=T
 BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE)
 {
     if (Norm) {
