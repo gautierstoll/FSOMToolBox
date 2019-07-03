@@ -384,7 +384,7 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable){
 
 ## User tool: Box plot of metacluster, either percentage or normlized size is Norm = T
 ## treatmentTable should be a dataframe with two column: "Treatment", "files" (a third one with column "NormalizationFactor" in Norm=T
-BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE)
+BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE,Plot=T)
 {
     if (Norm) {
         abstgs=get_abstgsMT(TreeMetaCl$fSOMTree,TreeMetaCl$metaCl)
@@ -401,7 +401,6 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
     }
     treatmentsFSOM=sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$Treatment[which(treatmentTable$files == fileFCS)]})
     Treatments=unique(treatmentTable$Treatment)
-    print(c(ControlTreatment,setdiff(Treatments,ControlTreatment)))
     treatmentsFSOM=factor(treatmentsFSOM,levels=c(ControlTreatment,setdiff(Treatments,ControlTreatment))) # set control treatment in first
     if (Norm) {pdf(file=paste(Title,"_BoxPlotNormMetacl.pdf",sep=""))}
     else {pdf(file=paste(Title,"_BoxPlotPercentMetacl.pdf",sep=""))}
@@ -449,14 +448,14 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
        beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
 
        return(tukeyPval)
-   })
-   tmpTable=PvalTable[,1]
-   PvalTable=as.data.frame(PvalTable)
-   names(PvalTable)=paste("mtcl",(1:metaclNumber),sep="")
-   par(mfrow=c(1,1),mar=c(3,2,3,1),cex=.5)
-   plot.new()
-   tt <- ttheme_default(colhead=list(fg_params = list(parse=TRUE)),base_size = 3*(35/metaclNumber))
-   grid.table(t(PvalTable),theme = tt)
+    })
+    tmpTable=PvalTable[,1]
+    PvalTable=as.data.frame(PvalTable)
+    names(PvalTable)=paste("mtcl",(1:metaclNumber),sep="")
+    par(mfrow=c(1,1),mar=c(3,2,3,1),cex=.5)
+    plot.new()
+    tt <- ttheme_default(colhead=list(fg_params = list(parse=TRUE)),base_size = 3*(35/metaclNumber))
+    grid.table(t(PvalTable),theme = tt)
     dev.off()
     if (Norm) {write.table(PvalTable,paste(Title,"_TukeyPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
     else {write.table(PvalTable,paste(Title,"_TukeyPvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}
