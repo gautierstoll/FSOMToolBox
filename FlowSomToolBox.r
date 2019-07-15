@@ -171,6 +171,7 @@ get_pctgsMT <- function(fSOM,metacl, meta_names = NULL){
     apply(1, function(x){x/sum(x)}) %>%
     t()
   if(!is.null(meta_names)) colnames(pctgs_meta) <- meta_names
+  print(str(pctgs_meta))
   return(list("pctgs" = as.matrix(pctgs),
               "pctgs_meta" = as.matrix(pctgs_meta)))
 }
@@ -185,12 +186,13 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
                   }) %>%
       unlist()
   pctgs <- table(files, GetClusters(fSOM)) %>%
-      as.matrix()
+      as.matrix() %>% apply(1,as.numeric) %>% t()
   pctgs_meta <- table(files, GetMetaclusters(fSOM,meta = metacl)) %>%
-      as.matrix()
+      as.matrix() %>% apply(1,as.numeric) %>% t()
+  print(str(pctgs_meta)) 
   if(!is.null(meta_names)) colnames(pctgs_meta) <- meta_names
-  return(list("abstgs" = as.matrix(pctgs),
-              "abstgs_meta" = as.matrix(pctgs_meta)))
+  return(list("abstgs" = pctgs,
+              "abstgs_meta" = pctgs_meta))
 }
 
 ##Internal tool: return p-value of Tukey test, given metacluster names
