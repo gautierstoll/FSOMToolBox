@@ -75,8 +75,9 @@ if (tmpIsV3p6) {
         }
         return(result)
     }
-    
+}
 ## Internal tool: GetClusters ?
+if(!exists("GetClusters",mode="function")) {
     GetClusters <- function(fsom) {
       if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
         fsom <- fsom$FlowSOM
@@ -86,8 +87,10 @@ if (tmpIsV3p6) {
       }
       return(fsom$map$mapping[,1])
     }
+}
     
 ## Internal tool: GetMetClusters ?
+if(!exists("GetMetaclusters",mode="function")) {
     GetMetaclusters <- function(fsom, meta = NULL){
       
       if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
@@ -105,9 +108,11 @@ if (tmpIsV3p6) {
       
       return(meta[fsom$map$mapping[,1]])
     } 
+}
     
+    ## Internal tool: Seems that PlotLabels diseapear...
+if(!exists("PlotLabels",mode="function")) {
     
-## Internal tool: Seems that PlotLabels diseapear...
     PlotLabels <- function(fsom,
                        labels,
                        view="MST",
@@ -150,8 +155,8 @@ if (tmpIsV3p6) {
                             main=main)
         
     }
-    
 }
+    
 
 ## Internal tool: extract meta-clusters count ratio in percent
 get_pctgsMT <- function(fSOM,metacl, meta_names = NULL){
