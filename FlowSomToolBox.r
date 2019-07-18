@@ -1,5 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
+## Version 0.7
 
 tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -176,7 +177,6 @@ get_pctgsMT <- function(fSOM,metacl, meta_names = NULL){
     apply(1, function(x){x/sum(x)}) %>%
     t()
   if(!is.null(meta_names)) colnames(pctgs_meta) <- meta_names
-  print(str(pctgs_meta))
   return(list("pctgs" = as.matrix(pctgs),
               "pctgs_meta" = as.matrix(pctgs_meta)))
 }
@@ -194,7 +194,6 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
       as.matrix() %>% apply(1,as.numeric) %>% t()
   pctgs_meta <- table(files, GetMetaclusters(fSOM,meta = metacl)) %>%
       as.matrix() %>% apply(1,as.numeric) %>% t()
-  print(str(pctgs_meta)) 
   if(!is.null(meta_names)) colnames(pctgs_meta) <- meta_names
   return(list("abstgs" = pctgs,
               "abstgs_meta" = pctgs_meta))
@@ -422,7 +421,8 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
     PvalTable = sapply((1:metaclNumber),function(metaCl)
     {
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM)
-        tukeyPval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$Treatment[,4]
+        tukeyPval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM[,4]
+        names(tukeyPval)=row.names(TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM)
         ListSignif=(sapply(1:length(tukeyPval),function(index){
             if(tukeyPval[index] < 0.0001){return(c("****",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
             else if(tukeyPval[index] < 0.001){return(c("***",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
@@ -444,20 +444,32 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
                 ylim=c(minTr,length(ListSignif)*abs(maxTr-minTr)*.2+maxTr)
                 )
         if (length(ListSignif) > 0) {
-            for (signifIndex in (1:length(ListSignif))) {
-              ##  print(maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2)
-               segments(y0=maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2,
-                        x0= ListSignifPosIndex[[signifIndex]][1],x1=ListSignifPosIndex[[signifIndex]][2])
-               text(x=(ListSignifPosIndex[[signifIndex]][1]+ListSignifPosIndex[[signifIndex]][2])/2,y=maxTr+(signifIndex-.1)*abs(maxTr-minTr)*.2,
-                    labels=ListSignif[[signifIndex]][1])
-           }
+            if (length(tukeyPval) > 1) ## more than one pair of comparison
+                {
+                    for (signifIndex in (1:length(ListSignif))) {
+                        ##  print(maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2)
+                        segments(y0=maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2,
+                                 x0= ListSignifPosIndex[[signifIndex]][1],x1=ListSignifPosIndex[[signifIndex]][2])
+                        text(x=(ListSignifPosIndex[[signifIndex]][1]+ListSignifPosIndex[[signifIndex]][2])/2,y=maxTr+(signifIndex-.1)*abs(maxTr-minTr)*.2,
+                             labels=ListSignif[[signifIndex]][1])
+                    }
+                } else {
+                    segments(y0=maxTr+(1-.4)*abs(maxTr-minTr)*.2,
+                             x0= 1,x1=2)
+                    text(x=1+1/2,y=maxTr+(1-.1)*abs(maxTr-minTr)*.2,
+                             labels=ListSignif[1])
+                    }
        }
        beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
 
        return(tukeyPval)
     })
-    tmpTable=PvalTable[,1]
-    PvalTable=as.data.frame(PvalTable)
+    ##print(PvalTable)
+    ##tmpTable=PvalTable[,1]
+    if(is.matrix(PvalTable)) {
+        PvalTable=as.data.frame(PvalTable)
+    }
+    else {PvalTable=as.data.frame(t(PvalTable))}
     names(PvalTable)=paste("mtcl",(1:metaclNumber),sep="")
     par(mfrow=c(1,1),mar=c(3,2,3,1),cex=.5)
     plot.new()
