@@ -259,14 +259,14 @@ PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm
         indexKeep =  which(fSOMObject$MST$size > sort(fSOMObject$MST$size)[nbRm])
         indexRemove  = setdiff((1:length(fSOMObject$MST$size)),indexKeep)
         fSOM4Plot$MST$size = (sqrt(clSizes)/max(sqrt(clSizes))*15)[indexKeep]
-        fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))[indexKeep,]
+        fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),,drop=F],2,function(x){median(x)})}))[indexKeep,]
         fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
         fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
         PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)
     }
     else {
         fSOM4Plot$MST$size = sqrt(clSizes)/max(sqrt(clSizes))*15
-        fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))
+        fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),,drop=F],2,function(x){median(x)})}))
          PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)
         }
 }
@@ -293,7 +293,7 @@ PlotMarkerMSTRm <- function(fSOMObject,markerName,mainTitle,nbRm=0)
 }
 
 ## User tool: marker level represented on metacluster tree, on a subset of samples given by an list of index, removing a given number of smallest metacluster
-PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0){
+PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0,globeScale=F){
     fSOM4Plot=list(
         map=fSOMObject$map,
         prettyColnames=fSOMObject$prettyColnames,
@@ -304,17 +304,27 @@ PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0
         indexKeep =  which(fSOMObject$MST$size > sort(fSOMObject$MST$size)[nbRm])
         indexRemove  = setdiff((1:length(fSOMObject$MST$size)),indexKeep)
         fSOM4Plot$MST$size = (sqrt(clSizes)/max(sqrt(clSizes))*15)[indexKeep]
-        fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))[indexKeep,]
+        fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){
+            if(length(intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i))) == 0 )
+            {print(paste("Cluster ",i," has size zero for given condition, use global median value")) 
+                apply(fSOMObject$data[which(fSOMObject$map$mapping[,1] == i),,drop=F],2,function(x){median(x)})}
+            else {apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),,drop=F],2,function(x){median(x)})}
+        }))[indexKeep,]
+        ##print(fSOM4Plot$map$medianValues)
         fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
         fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
-        PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle)
+        
     }
     else {
-    fSOM4Plot$MST$size = sqrt(clSizes)/max(sqrt(clSizes))*15
-    fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),],2,function(x){median(x)})}))
-
-    PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle)
+        fSOM4Plot$MST$size = sqrt(clSizes)/max(sqrt(clSizes))*15
+        fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){
+            if(length(intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i))) == 0 )
+            {print(paste("Cluster ",i," has size zero for given condition, use global median value"))
+                apply(fSOMObject$data[which(fSOMObject$map$mapping[,1] == i),,drop=F],2,function(x){median(x)})}
+            else{apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),,drop=F],2,function(x){median(x)})}
+        }))
     }
+    PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle)
 }
 
 ## User tool: Download data, given fcs files, FlowJo workspace should in in current environment, FCS directory is inside wd, given with no "/"
