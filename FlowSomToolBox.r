@@ -272,7 +272,7 @@ PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm
 }
 
 ## User tool: marker level represented on metacluster tree, removing a given number of smallest metacluster
-PlotMarkerMSTRm <- function(fSOMObject,markerName,mainTitle,nbRm=0)
+PlotMarkerMSTRm <- function(fSOMObject,markerName,mainTitle,nbRm=0,globalMinMax=c())
 {
    fSOM4Plot=list(
         map=fSOMObject$map,
@@ -286,14 +286,28 @@ PlotMarkerMSTRm <- function(fSOMObject,markerName,mainTitle,nbRm=0)
        fSOM4Plot$map$medianValues=fSOMObject$map$medianValues[indexKeep,]
        fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
        fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
-       PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)
     }
-    else
-    {PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)}
+
+ if (length(globalMinMax) > 0)
+     {
+         maxGlobal = globalMinMax[2]
+         minGlobal = globalMinMax[1]
+         maxCond=max(fSOM4Plot$map$medianValues[,markerName])
+         minCond=min(fSOM4Plot$map$medianValues[,markerName])
+         colorPalette1000=grDevices::colorRampPalette(c("#00007F", "blue","#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))(1000)
+        minIndex=(minCond-minGlobal)/(maxGlobal-minGlobal)*1000
+        maxIndex=(maxCond-minGlobal)/(maxGlobal-minGlobal)*1000
+        colorIndexRound=round(minIndex+(0:8)*(maxIndex-minIndex)/8)
+        colorPaletteCond=grDevices::colorRampPalette(colorPalette1000[colorIndexRound])    
+   
+         PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle,colorPalette = colorPaletteCond)
+     }
+   else {PlotMarker(fSOM4Plot,marker=markerName, view = "MST",main=mainTitle)
+   }
 }
 
 ## User tool: marker level represented on metacluster tree, on a subset of samples given by an list of index, removing a given number of smallest metacluster
-PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0,globeScale=F){
+PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0,globalMinMax=c()){
     fSOM4Plot=list(
         map=fSOMObject$map,
         prettyColnames=fSOMObject$prettyColnames,
@@ -324,9 +338,25 @@ PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0
             else{apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),,drop=F],2,function(x){median(x)})}
         }))
     }
-    PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle)
-}
 
+
+     if (length(globalMinMax) > 0)
+     {
+         maxGlobal = globalMinMax[2]
+         minGlobal = globalMinMax[1]
+         maxCond=max(fSOM4Plot$map$medianValues[,markerName])
+         minCond=min(fSOM4Plot$map$medianValues[,markerName])
+         colorPalette1000=grDevices::colorRampPalette(c("#00007F", "blue","#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))(1000)
+        minIndex=(minCond-minGlobal)/(maxGlobal-minGlobal)*1000
+        maxIndex=(maxCond-minGlobal)/(maxGlobal-minGlobal)*1000
+        colorIndexRound=round(minIndex+(0:8)*(maxIndex-minIndex)/8)
+        colorPaletteCond=grDevices::colorRampPalette(colorPalette1000[colorIndexRound])    
+        PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle,colorPalette = colorPaletteCond)
+     }
+     else {PlotMarker(fSOM4Plot, marker=markerName, view = "MST", main=mainTitle)}
+}
+     
+    
 ## User tool: Download data, given fcs files, FlowJo workspace should in in current environment, FCS directory is inside wd, given with no "/"
 DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube"){
     flowJoWS=list.files(pattern=".wsp")
@@ -367,32 +397,65 @@ buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
 
 ## User tool: plot figures, use the object created by buildFSOMTree
 ## the treatmentTable should be a dataframe with two column: "Treatment", "files"
-plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable){
+plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalScale=F){
+    if (rmClNb>0) {
+        indexKeep =  which(TreeMetacl$fSOMTree$MST$size > sort(TreeMetacl$fSOMTree$MST$size)[rmClNb])} else {indexKeep = 1:length(TreeMetacl$fSOMTree$MST$size)}
     pdf(file=paste(Title,"_TreatmentTree.pdf",sep=""))
     PlotStarsMSTRm(TreeMetacl$fSOMTree,TreeMetacl$metaCl,paste(Title," MainTree",sep=""),rmClNb)
     Treatments=unique(treatmentTable$Treatment)
     for (treatName in Treatments) {
         print(paste("Treatment: ",treatName,sep=""))
         fcsFiles=treatmentTable$files[which(treatmentTable$Treatment == treatName)]
-        treatIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))
+        treatIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))    
         PlotStarsMSTCondRm(TreeMetacl$fSOMTree,TreeMetacl$metaCl,treatIndex,paste(Title," Treat: ",treatName,sep=""),rmClNb)
         }
     dev.off()
     pdf(file=paste(Title,"_MarkerTree.pdf",sep=""))
     for (marker in markers)
     {
-        print(paste("Marker: ",marker,sep=""))
         uglyName = names(which(TreeMetacl$fSOMTree$prettyColnames == marker))
-        PlotMarkerMSTRm(TreeMetacl$fSOMTree,uglyName,paste(Title," Marker: ",marker,sep=""),rmClNb)
+        if (globalScale)
+        {
+            listTreatmentIndices = lapply(unique(treatmentTable$Treatment),function(treatName){
+                fcsFiles=treatmentTable$files[which(treatmentTable$Treatment == treatName)]
+                CondIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))
+                return(unlist(sapply(TreeMetacl$fSOMTree$metaData[CondIndex],function(x){x[1]:x[2]})))
+            })
+            maxMin = matrix(unlist(lapply((1:length(TreeMetacl$fSOMTree$map$medianValues[,1]))[indexKeep],function(cluster){
+                medianList=sapply(listTreatmentIndices,function(indices){
+                    median(TreeMetacl$fSOMTree$data[intersect(indices,which(TreeMetacl$fSOMTree$map$mapping[,1] == cluster)),uglyName])});
+                c(max(medianList,na.rm=T),min(medianList,na.rm=T))
+            })),nrow=2)
+            maxGlobal = max(maxMin[1,])
+            minGlobal = min(maxMin[2,])
+            print(paste("Scale for marker",marker,":",minGlobal,"->",maxGlobal))
+            globMinMax=c(minGlobal,maxGlobal)
+        }
+        else {globMinMax=c()}
+        print(paste("Marker: ",marker,sep=""))
+        PlotMarkerMSTRm(TreeMetacl$fSOMTree,uglyName,paste(Title," Marker: ",marker,sep=""),rmClNb,globMinMax)
     }
     for (marker in markers){
+         uglyName = names(which(TreeMetacl$fSOMTree$prettyColnames == marker))
+        if (globalScale)
+        {
+            listTreatmentIndices = lapply(unique(treatmentTable$Treatment),function(treatName){
+                fcsFiles=treatmentTable$files[which(treatmentTable$Treatment == treatName)]
+                CondIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))
+                return(unlist(sapply(TreeMetacl$fSOMTree$metaData[CondIndex],function(x){x[1]:x[2]})))
+            })
+            maxMin = matrix(unlist(lapply((1:length(TreeMetacl$fSOMTree$map$medianValues[,1]))[indexKeep],function(cluster){medianList=sapply(listTreatmentIndices,function(indices){median(TreeMetacl$fSOMTree$data[intersect(indices,which(TreeMetacl$fSOMTree$map$mapping[,1] == cluster)),uglyName])});c(max(medianList,na.rm=T),min(medianList,na.rm=T))})),nrow=2)
+            maxGlobal = max(maxMin[1,])
+            minGlobal = min(maxMin[2,])
+            globMinMax=c(minGlobal,maxGlobal)
+        }
+        else {globMinMax=c()}
         print(paste("Marker: ",marker,sep=""))
-        uglyName = names(which(TreeMetacl$fSOMTree$prettyColnames == marker))
         for (treatName in Treatments){
             print(paste("Treatment: ",treatName,sep=""))
             fcsFiles=treatmentTable$files[which(treatmentTable$Treatment == treatName)]
             treatIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))
-            PlotMarkerMSTCondRm(TreeMetacl$fSOMTree,uglyName,treatIndex,paste(Title," Marker: ",marker," Treat: ",treatName,sep=""),rmClNb)
+            PlotMarkerMSTCondRm(TreeMetacl$fSOMTree,uglyName,treatIndex,paste(Title," Marker: ",marker," Treat: ",treatName,sep=""),rmClNb,globMinMax)
         }
     }
     dev.off()
