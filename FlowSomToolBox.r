@@ -193,7 +193,8 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
   pctgs <- table(files, GetClusters(fSOM)) %>%
       as.matrix() %>% apply(1,as.numeric) %>% t()
   pctgs_meta <- table(files, GetMetaclusters(fSOM,meta = metacl)) %>%
-      as.matrix() %>% apply(1,as.numeric) %>% t()
+      as.matrix()
+  ## %>% apply(1,as.numeric) %>% t()
   if(!is.null(meta_names)) colnames(pctgs_meta) <- meta_names
   return(list("abstgs" = pctgs,
               "abstgs_meta" = pctgs_meta))
@@ -402,16 +403,23 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalS
         indexKeep =  which(TreeMetacl$fSOMTree$MST$size > sort(TreeMetacl$fSOMTree$MST$size)[rmClNb])} else {indexKeep = 1:length(TreeMetacl$fSOMTree$MST$size)}
     pdf(file=paste(Title,"_TreatmentTree.pdf",sep=""))
     PlotStarsMSTRm(TreeMetacl$fSOMTree,TreeMetacl$metaCl,paste(Title," MainTree",sep=""),rmClNb)
-    Treatments=unique(treatmentTable$Treatment)
+    
+    Treatments=unique(treatmentTable$Treatment[which(sapply(tableTreatmentFCS$files,function(files){length(grep(files,names(TreeMetacl$fSOMTree$metaData),fixed=T))>0}))])
+    print("Treatments:")
+         print(Treatments)
     for (treatName in Treatments) {
-        print(paste("Treatment: ",treatName,sep=""))
+        ##print(paste("Treatment: ",treatName,sep=""))
         fcsFiles=treatmentTable$files[which(treatmentTable$Treatment == treatName)]
-        treatIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))    
+        treatIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))
+        print(paste("Plot tree for treatment",treatName))
         PlotStarsMSTCondRm(TreeMetacl$fSOMTree,TreeMetacl$metaCl,treatIndex,paste(Title," Treat: ",treatName,sep=""),rmClNb)
         }
     dev.off()
     pdf(file=paste(Title,"_MarkerTree.pdf",sep=""))
-    for (marker in markers)
+    markersInData = intersect(markers,TreeMetacl$fSOMTree$prettyColnames)
+    print("Markers:")
+   print(markersInData)
+    for (marker in markersInData)
     {
         uglyName = names(which(TreeMetacl$fSOMTree$prettyColnames == marker))
         if (globalScale)
@@ -432,10 +440,11 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalS
             globMinMax=c(minGlobal,maxGlobal)
         }
         else {globMinMax=c()}
-        print(paste("Marker: ",marker,sep=""))
+        ##print(paste("Marker: ",marker,sep=""))
+        print(paste("Plot tree for marker",marker," -- ",uglyName))
         PlotMarkerMSTRm(TreeMetacl$fSOMTree,uglyName,paste(Title," Marker: ",marker,sep=""),rmClNb,globMinMax)
     }
-    for (marker in markers){
+    for (marker in markersInData){
          uglyName = names(which(TreeMetacl$fSOMTree$prettyColnames == marker))
         if (globalScale)
         {
@@ -450,11 +459,12 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalS
             globMinMax=c(minGlobal,maxGlobal)
         }
         else {globMinMax=c()}
-        print(paste("Marker: ",marker,sep=""))
+        ##print(paste("Marker: ",marker,sep=""))
         for (treatName in Treatments){
-            print(paste("Treatment: ",treatName,sep=""))
+            ##print(paste("Treatment: ",treatName,sep=""))
             fcsFiles=treatmentTable$files[which(treatmentTable$Treatment == treatName)]
             treatIndex = unlist(sapply(fcsFiles,function(file){grep(file,names(TreeMetacl$fSOMTree$metaData),fixed=T)}))
+             print(paste("Plot tree for marker",marker," -- ",uglyName,"and treatment",treatName))
             PlotMarkerMSTCondRm(TreeMetacl$fSOMTree,uglyName,treatIndex,paste(Title," Marker: ",marker," Treat: ",treatName,sep=""),rmClNb,globMinMax)
         }
     }
@@ -487,8 +497,8 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
     for (metaCl in (1:metaclNumber)){
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM) ## dataframe for box plot
-        boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",metaCl,sep=""),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=.8,cex.lab=.5)
-        beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",metaCl,sep=""),add=T,cex=.5,col="red")
+        boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=.8,cex.lab=.5)
+        beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),add=T,cex=.5,col="red")
     }
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
     PvalTable = sapply((1:metaclNumber),function(metaCl)
@@ -508,7 +518,7 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
         minTr=min(plotDf$PP)
         maxTr=max(plotDf$PP)
         boxplot(PP ~ TreatmentFSOM,
-                data=plotDf,main=paste("mtcl",metaCl,sep=""),
+                data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),
                 xlab="",
                 ylab=paste("% of ",yLab,sep=""),
                 cex.axis=.5,
