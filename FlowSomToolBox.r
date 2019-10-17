@@ -359,7 +359,7 @@ PlotMarkerMSTCondRm <- function(fSOMObject,markerName,condIndex,mainTitle,nbRm=0
      
     
 ## User tool: Download data, given fcs files, FlowJo workspace should in in current environment, FCS directory is inside wd, given with no "/"
-DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube"){
+DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube",compensate=FALSE ){
     flowJoWS=list.files(pattern=".wsp")
     if (length(flowJoWS) > 1)
     {
@@ -376,7 +376,7 @@ DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube"){
             data<-parse_flowjo(files,flowJoWS)
         }
     dataGated<-gating_subset(data,gatingName)
-    fSOM<-ReadInput(dataGated$flowSet,compensate = FALSE,transform = FALSE,scale = FALSE,scaled.center = TRUE,scaled.scale = TRUE,silent = FALSE)
+    fSOM<-ReadInput(dataGated$flowSet,compensate = compensate,transform = FALSE,scale = FALSE,scaled.center = TRUE,scaled.scale = TRUE,silent = FALSE)
     return(list(fSOMData=fSOM,flJoDataGated=dataGated))
 }
 ## User tool: build FSOM tree with the metacluster, plot the tree
