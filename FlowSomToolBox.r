@@ -29,6 +29,7 @@ library(dplyr)
 library(beeswarm)
 
 library(gridExtra)
+library(gplots)
 if (tmpIsV3p6) {
     library(CytoML)
     }
@@ -473,10 +474,18 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalS
     dev.off()
 }
 
-## User tool: Box plot of metacluster, either percentage or normlized size is Norm = T
+
+
+## User tool: Box plot of metacluster, either percentage or normalized size is Norm = T. If a existing marker is specified, use the marker 
 ## treatmentTable should be a dataframe with two column: "Treatment", "files" (a third one with column "NormalizationFactor" in Norm=T
-BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE,Marker="")
+BoxPlotMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE) {
+   BoxPlotMetaClustFull(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm,Marker="")
+}
+
+BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE,Marker="")
 {
+    
+    ## Search for the marker
     MarkerIndex = which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
     if(length(MarkerIndex) == 1) {
         print(paste("User marker:",Marker,":",names(TreeMetaCl$fSOMTree$prettyColnames)[MarkerIndex]))
@@ -508,6 +517,8 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
         fSOMnbrs<-fSOMnbrs*100
         PlotLab=paste("% of ",yLab,sep="")
     }
+        ##colnames(fSOMnbrs)=unique(TreeMetaCl$metaCl)
+        ##row.names(fSOMnbrs)=gsub(".*/","",row.names(fSOMnbrs))
         }
     treatmentsFSOM=sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$Treatment[which(treatmentTable$files == fileFCS)]})
     Treatments=unique(treatmentTable$Treatment)
@@ -579,12 +590,12 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
     if(length(MarkerIndex) == 1) {write.table(PvalTukeyTable,paste(Title,"_TukeyPval",Marker,"Metacl.csv",sep=""),sep=";",col.names = NA)} else {
     if (Norm) {write.table(PvalTukeyTable,paste(Title,"_TukeyPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
     else {write.table(PvalTukeyTable,paste(Title,"_TukeyPvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}}
-    
-    DF4lm = data.frame(y=c(fSOMnbrs),metaCl = c(sapply(colnames(fSOMnbrs),function(name){rep(name,length(fSOMnbrs[,1]))})),treat = rep(c(sapply(row.names(fSOMnbrs),function(name){treatmentTable$Treatment[which(treatmentTable$files == name)]})),length(fSOMnbrs[1,])))
+    DF4lm = data.frame(y=c(fSOMnbrs),metaCl = c(sapply(colnames(fSOMnbrs),function(name){rep(name,length(fSOMnbrs[,1]))})),treat = rep(c(sapply(row.names(fSOMnbrs),function(name){as.character(treatmentTable$Treatment[which(treatmentTable$files == name)])})),length(fSOMnbrs[1,])))
     DF4lm$treat = factor(DF4lm$treat,levels=c(ControlTreatment,setdiff(unique(DF4lm$treat),ControlTreatment)))
     pvalLmMatrix = t(do.call(rbind,lapply(colnames(fSOMnbrs),function(metaCl){summary(lm(y ~ treat,data = DF4lm[which(DF4lm$metaCl == metaCl),]))$coefficient[-1,4]})))
     colnames(pvalLmMatrix) = paste("mtcl",colnames(fSOMnbrs),sep= "_")
-    row.names(pvalLmMatrix) = setdiff(unique(DF4lm$treat),"ND")
+    
+    row.names(pvalLmMatrix) = setdiff(unique(DF4lm$treat),ControlTreatment)
     pvalLmMatrix = rbind(rep(1,length(fSOMnbrs[1,])),pvalLmMatrix)
     row.names(pvalLmMatrix)[1] = ControlTreatment
     DF4lm$metaCl = factor(DF4lm$metaCl,level=unique(DF4lm$metaCl)) ## to get the right ordering after "by" function
@@ -614,5 +625,10 @@ BoxPlotMetaClust <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,Bo
 }
 
 BoxPlotMarkerMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,Marker="") {
-BoxPlotMetaClust(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab="",Norm=FALSE,Marker)
+    MarkerIndex = which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
+    if (length(MarkerIndex) < 1) {stop("No marker ",Marker," in data")} else {
+    BoxPlotMetaClustFull(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab="",Norm=FALSE,Marker) }
 }
+
+
+
