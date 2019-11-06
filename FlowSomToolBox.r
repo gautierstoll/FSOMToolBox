@@ -30,6 +30,7 @@ library(beeswarm)
 
 library(gridExtra)
 library(gplots)
+library(dunn.test)
 if (tmpIsV3p6) {
     library(CytoML)
     }
@@ -204,6 +205,190 @@ get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
 ##Internal tool: return p-value of Tukey test, given metacluster names
 TukeyTestSarah = function(fSOMTable, metaClust){TukeyHSD(aov(as.formula(paste(metaClust,"~ Treatment")),data=fSOMTable))$Treatment[,4]}
 
+##Internal tool every kind of boxplots-heatmaps
+BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE,Marker="",Robust,ClustHeat)
+{   
+    ## Search for the marker
+    MarkerIndex = which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
+    if(length(MarkerIndex) == 1) {
+        print(paste("User marker:",Marker,":",names(TreeMetaCl$fSOMTree$prettyColnames)[MarkerIndex]))
+        fSOMnbrs = sapply(unique(TreeMetaCl$metaCl),function(metaClust){
+            clusterList=which(TreeMetaCl$metaCl == metaClust)
+            metaClustIndices=unlist(sapply(clusterList,function(cluster){which(TreeMetaCl$fSOMTree$map$mapping[,1] == cluster)}))
+            sapply(TreeMetaCl$fSOMTree$metaData,function(StartEnd){
+                indices = intersect((StartEnd[1]:StartEnd[2]),metaClustIndices)
+                return(median(TreeMetaCl$fSOMTree$data[indices,MarkerIndex]))
+            })
+        })
+        colnames(fSOMnbrs)=unique(TreeMetaCl$metaCl)
+        row.names(fSOMnbrs)=gsub(".*/","",row.names(fSOMnbrs))
+        PlotLab=Marker
+    }
+    else {
+    ## constuct fSOMnbrs, according to Norm (false: percentage, true: normalized)
+    
+    if (Norm) {
+        abstgs=get_abstgsMT(TreeMetaCl$fSOMTree,TreeMetaCl$metaCl)
+        fSOMnbrs<-abstgs$abstgs_meta
+        if (is.null(treatmentTable$NormalizationFactor)) {stop("No column NormalizationFactor in annotation table")}
+        NormFactors = sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$NormalizationFactor[which(treatmentTable$files == fileFCS)]})
+        for (index in 1:length(NormFactors)) {fSOMnbrs[index,] = fSOMnbrs[index,]/NormFactors[index] }
+        PlotLab=yLab
+    }
+    else {
+        pctgs<-get_pctgsMT(TreeMetaCl$fSOMTree,TreeMetaCl$metaCl)
+        fSOMnbrs<-pctgs$pctgs_meta
+        fSOMnbrs<-fSOMnbrs*100
+        PlotLab=paste("% of ",yLab,sep="")
+    }
+        ##colnames(fSOMnbrs)=unique(TreeMetaCl$metaCl)
+        ##row.names(fSOMnbrs)=gsub(".*/","",row.names(fSOMnbrs))
+        }
+    treatmentsFSOM=sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$Treatment[which(treatmentTable$files == fileFCS)]})
+    Treatments=unique(treatmentTable$Treatment)
+    treatmentsFSOM=factor(treatmentsFSOM,levels=c(ControlTreatment,setdiff(Treatments,ControlTreatment))) # set control treatment at first
+    if(length(MarkerIndex) == 1) {pdf(file=paste(Title,"_BoxPlot",Marker,"Metacl.pdf",sep=""))} else {
+    if (Norm) {pdf(file=paste(Title,"_BoxPlotNormMetacl.pdf",sep=""))}
+    else {pdf(file=paste(Title,"_BoxPlotPercentMetacl.pdf",sep=""))}}
+    metaclNumber=length(fSOMnbrs[1,])
+    par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0)) ## page have 6x6 boxplots
+    fSOMnbrs=fSOMnbrs[,unique(unique(TreeMetaCl$metaCl))]
+    for (metaCl in (1:metaclNumber)){ ## boxplots with no annotations
+        plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM) ## dataframe for box plot
+        boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=.8,cex.lab=.5)
+        beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),add=T,cex=.5,col="red")
+    }
+    par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
+    PvalPairwiseTable = sapply((1:metaclNumber),function(metaCl) ## construct pval table of tukey pairwise comparison test, boxplots with p-values annotation
+    {
+        plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM)
+        if (Robust) {
+            invisible(capture.output(tmp <- dunn.test(plotDf$PP,plotDf$TreatmentFSOM)))
+            pairwisePval=tmp$P
+            names(pairwisePval) = gsub(" ","",tmp$comparisons,fixed=T)
+        } else {
+            pairwisePval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM[,4]
+            names(pairwisePval)=row.names(TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM)
+        }
+        ListSignif=(sapply(1:length(pairwisePval),function(index){
+            if(pairwisePval[index] < 0.0001){return(c("****",strsplit(names(pairwisePval)[index],split = "-")[[1]]))}
+            else if(pairwisePval[index] < 0.001){return(c("***",strsplit(names(pairwisePval)[index],split = "-")[[1]]))}
+            else if(pairwisePval[index] < 0.01){return(c("**",strsplit(names(pairwisePval)[index],split = "-")[[1]]))}
+            else if(pairwisePval[index] < 0.05){return(c("*",strsplit(names(pairwisePval)[index],split = "-")[[1]]))}
+        }))
+        ListSignif = ListSignif[which(sapply(ListSignif,length) > 0)]
+        ListSignifPosIndex = lapply(ListSignif,function(hit){
+            return(c(which(levels(plotDf$TreatmentFSOM) == hit[2]),which(levels(plotDf$TreatmentFSOM) == hit[3])))})
+        minTr=min(plotDf$PP,na.rm=T)
+        maxTr=max(plotDf$PP,na.rm=T)
+        boxplot(PP ~ TreatmentFSOM,
+                data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),
+                xlab="",
+                ylab=PlotLab,
+                cex.axis=.5,
+                cex.main=.8,
+                cex.lab=.5,
+                ylim=c(minTr,length(ListSignif)*abs(maxTr-minTr)*.2+maxTr)
+                )
+        if (length(ListSignif) > 0) {
+            if (length(pairwisePval) > 1) ## more than one pair of comparison
+                {
+                    for (signifIndex in (1:length(ListSignif))) {
+                        ##  print(maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2)
+                        segments(y0=maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2,
+                                 x0= ListSignifPosIndex[[signifIndex]][1],x1=ListSignifPosIndex[[signifIndex]][2])
+                        text(x=(ListSignifPosIndex[[signifIndex]][1]+ListSignifPosIndex[[signifIndex]][2])/2,y=maxTr+(signifIndex-.1)*abs(maxTr-minTr)*.2,
+                             labels=ListSignif[[signifIndex]][1])
+                    }
+                } else {
+                    segments(y0=maxTr+(1-.4)*abs(maxTr-minTr)*.2,
+                             x0= 1,x1=2)
+                    text(x=1+1/2,y=maxTr+(1-.1)*abs(maxTr-minTr)*.2,
+                             labels=ListSignif[1])
+                    }
+       }
+       beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
+       return(pairwisePval)
+    })
+    ## finish the construction of PvalTable, write csv files 
+    if(is.matrix(PvalPairwiseTable)) {
+        PvalPairwiseTable=as.data.frame(PvalPairwiseTable)
+    }
+    else {PvalPairwiseTable=as.data.frame(t(PvalPairwiseTable))}
+    names(PvalPairwiseTable)=paste("mtcl",colnames(fSOMnbrs)[1:metaclNumber],sep="_")
+    par(mfrow=c(1,1),mar=c(3,2,3,1),cex=.5)
+  
+    if(length(MarkerIndex) == 1) {write.table(PvalPairwiseTable,paste(Title,"_PairwisePval",Marker,"Metacl.csv",sep=""),sep=";",col.names = NA)} else {
+    if (Norm) {write.table(PvalPairwiseTable,paste(Title,"_PairwisePvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
+    else {write.table(PvalPairwiseTable,paste(Title,"_PairwisePvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}}
+
+    DF4lm = data.frame(y=c(fSOMnbrs),metaCl = c(sapply(colnames(fSOMnbrs),function(name){rep(name,length(fSOMnbrs[,1]))})),treat = rep(c(sapply(row.names(fSOMnbrs),function(name){as.character(treatmentTable$Treatment[which(treatmentTable$files == name)])})),length(fSOMnbrs[1,])))
+    DF4lm$treat = factor(DF4lm$treat,levels=c(ControlTreatment,setdiff(unique(DF4lm$treat),ControlTreatment)))
+    if (Robust) {
+        pvalLmMatrix=as.matrix(PvalPairwiseTable)[which(sapply(row.names(PvalPairwiseTable),function(name){spName = strsplit(name,split = "-")[[1]];((spName[1] == ControlTreatment) |(spName[2] == ControlTreatment) )})),]
+        row.names(pvalLmMatrix)=gsub(ControlTreatment,"",row.names(pvalLmMatrix),fixed=T)
+        row.names(pvalLmMatrix)=gsub("-","",row.names(pvalLmMatrix),fixed=T)
+    } else {
+        pvalLmMatrix = t(do.call(rbind,lapply(colnames(fSOMnbrs),function(metaCl){summary(lm(y ~ treat,data = DF4lm[which(DF4lm$metaCl == metaCl),]))$coefficient[-1,4]})))
+        row.names(pvalLmMatrix) = setdiff(unique(DF4lm$treat),ControlTreatment)
+    }
+    colnames(pvalLmMatrix) = paste("mtcl",colnames(fSOMnbrs),sep= "_")
+    pvalLmMatrix = rbind(rep(1,length(fSOMnbrs[1,])),pvalLmMatrix)
+    row.names(pvalLmMatrix)[1] = ControlTreatment
+    DF4lm$metaCl = factor(DF4lm$metaCl,level=unique(DF4lm$metaCl)) ## to get the right ordering after "by" function
+    if (Robust) {
+        meanMatrix  = t(by(DF4lm$y,list(DF4lm$metaCl,DF4lm$treat),function(x){median(x,na.rm=T)}))
+        pvalLmMatrix=pvalLmMatrix[row.names(meanMatrix),]
+    } else {
+        meanMatrix  = t(by(DF4lm$y,list(DF4lm$metaCl,DF4lm$treat),function(x){mean(x,na.rm=T)})) }
+    attr(meanMatrix,"class") = NULL
+    attr(meanMatrix,"call") = NULL
+    colnames(meanMatrix) = paste("mtcl",colnames(meanMatrix),sep= "_")
+    pvalAnnotationMatrix = apply(pvalLmMatrix,c(1,2),function(x){
+    if (x < 0.0001){return("****")}
+            else if(x < 0.001){return("***")}
+            else if(x < 0.01){return("**")}
+            else if(x < 0.05){return("*")} else {return("")}})
+    if (length(MarkerIndex) == 1) {
+        if (Robust) {heatTitle = paste("Median MFI of ",PlotLab,sep="")} else {heatTitle = paste("Mean MFI of ",PlotLab,sep="")}
+        if (ClustHeat) {
+            heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5)
+        }
+heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5)
+    } else {
+        if (Robust) {if (Norm) {heatTitle = paste("Median size of ",PlotLab,sep="")} else {heatTitle = paste("Median % of ",PlotLab,sep="")}}
+        else {if (Norm) {heatTitle = paste("Mean size of ",PlotLab,sep="")} else {heatTitle = paste("Mean % of ",PlotLab,sep="")}}
+        heatTitle=paste(heatTitle,"(rel. to control, scaled)",sep="\n")
+        meanMatrix=apply(meanMatrix,2,function(x){(x-x[1])/sd(x,na.rm=T)})
+        meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
+        print(meanMatrix)
+        if (ClustHeat) {
+            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5)
+        } 
+            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5)   
+    }
+    matrixPval4Heat=as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")]
+    if (Robust) {
+        if (ClustHeat) {
+            heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(5,8),density.info="none")
+}       
+            heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(5,8),density.info="none")
+    } else {
+             if (ClustHeat) {
+                 heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(5,8),density.info="none")
+             }
+                 heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(5,8),density.info="none") }      
+    dev.off()
+    retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
+
+    if(length(MarkerIndex) == 1) {write.table(pvalLmMatrix,paste(Title,"_LmPval",Marker,"Metacl.csv",sep=""),sep=";",col.names = NA)} else {
+    if (Norm) {write.table(pvalLmMatrix,paste(Title,"_LmPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
+    else {write.table(pvalLmMatrix,paste(Title,"_LmPvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}}
+    
+    names(retData)=c("Sizes","PvalPairwise","PvalLm")
+    return(retData)
+}
+
 ## User tool: Plot Meta clusters labels
 PlotLabelsRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 {
@@ -248,7 +433,7 @@ PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
 }
 
 ## User tool: tree representaton of metacluster, given size and marker representation on a subset of samples given by an list of index, removing a given number of smallest metacluster
-PlotStarsMSTCondRm=function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm=0)
+PlotStarsMSTCondRm <- function(fSOMObject,metaClustFactors,condIndex,mainTitle,nbRm=0)
 {
     fSOM4Plot=list(
         map=fSOMObject$map,
@@ -474,162 +659,21 @@ plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalS
     dev.off()
 }
 
-
-
-## User tool: Box plot of metacluster, either percentage or normalized size is Norm = T. If a existing marker is specified, use the marker 
-## treatmentTable should be a dataframe with two column: "Treatment", "files" (a third one with column "NormalizationFactor" in Norm=T
-BoxPlotMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE) {
-   BoxPlotMetaClustFull(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm,Marker="")
+## User tool: Box plot of metacluster, either percentage or normalized size is Norm = T.
+## TreatmentTable should be a dataframe with two column: "Treatment", "files" (a third one with column "NormalizationFactor" if Norm=T).
+## Robust specifies either Tukey/lm or Dunn (non adjusted p-values).
+## ClustHeat=FALSE for no clustering on heatmap.
+BoxPlotMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE,Robust = TRUE,ClustHeat=TRUE) {
+   BoxPlotMetaClustFull(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm,Marker="",Robust,ClustHeat)
 }
 
-BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE,Marker="")
-{
-    
-    ## Search for the marker
-    MarkerIndex = which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
-    if(length(MarkerIndex) == 1) {
-        print(paste("User marker:",Marker,":",names(TreeMetaCl$fSOMTree$prettyColnames)[MarkerIndex]))
-        fSOMnbrs = sapply(unique(TreeMetaCl$metaCl),function(metaClust){
-            clusterList=which(TreeMetaCl$metaCl == metaClust)
-            metaClustIndices=unlist(sapply(clusterList,function(cluster){which(TreeMetaCl$fSOMTree$map$mapping[,1] == cluster)}))
-            sapply(TreeMetaCl$fSOMTree$metaData,function(StartEnd){
-                indices = intersect((StartEnd[1]:StartEnd[2]),metaClustIndices)
-                return(median(TreeMetaCl$fSOMTree$data[indices,MarkerIndex]))
-            })
-        })
-        colnames(fSOMnbrs)=unique(TreeMetaCl$metaCl)
-        row.names(fSOMnbrs)=gsub(".*/","",row.names(fSOMnbrs))
-        PlotLab=Marker
-    }
-    else {
-    ## constuct fSOMnbrs, according to Norm (false: percentage, true: normalized)
-    
-    if (Norm) {
-        abstgs=get_abstgsMT(TreeMetaCl$fSOMTree,TreeMetaCl$metaCl)
-        fSOMnbrs<-abstgs$abstgs_meta
-        if (is.null(treatmentTable$NormalizationFactor)) {stop("No column NormalizationFactor in annotation table")}
-        NormFactors = sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$NormalizationFactor[which(treatmentTable$files == fileFCS)]})
-        for (index in 1:length(NormFactors)) {fSOMnbrs[index,] = fSOMnbrs[index,]/NormFactors[index] }
-        PlotLab=yLab
-    }
-    else {
-        pctgs<-get_pctgsMT(TreeMetaCl$fSOMTree,TreeMetaCl$metaCl)
-        fSOMnbrs<-pctgs$pctgs_meta
-        fSOMnbrs<-fSOMnbrs*100
-        PlotLab=paste("% of ",yLab,sep="")
-    }
-        ##colnames(fSOMnbrs)=unique(TreeMetaCl$metaCl)
-        ##row.names(fSOMnbrs)=gsub(".*/","",row.names(fSOMnbrs))
-        }
-    treatmentsFSOM=sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$Treatment[which(treatmentTable$files == fileFCS)]})
-    Treatments=unique(treatmentTable$Treatment)
-    treatmentsFSOM=factor(treatmentsFSOM,levels=c(ControlTreatment,setdiff(Treatments,ControlTreatment))) # set control treatment at first
-    if(length(MarkerIndex) == 1) {pdf(file=paste(Title,"_BoxPlot",Marker,"Metacl.pdf",sep=""))} else {
-    if (Norm) {pdf(file=paste(Title,"_BoxPlotNormMetacl.pdf",sep=""))}
-    else {pdf(file=paste(Title,"_BoxPlotPercentMetacl.pdf",sep=""))}}
-    metaclNumber=length(fSOMnbrs[1,])
-    par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0)) ## page have 6x6 boxplots
-    for (metaCl in (1:metaclNumber)){ ## boxplots with no annotations
-        plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM) ## dataframe for box plot
-        boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=.8,cex.lab=.5)
-        beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),add=T,cex=.5,col="red")
-    }
-    par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
-    PvalTukeyTable = sapply((1:metaclNumber),function(metaCl) ## construct pval table of tukey pairwise comparison test, boxplots with p-values annotation
-    {
-        plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM)
-        tukeyPval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM[,4]
-        names(tukeyPval)=row.names(TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM)
-        ListSignif=(sapply(1:length(tukeyPval),function(index){
-            if(tukeyPval[index] < 0.0001){return(c("****",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-            else if(tukeyPval[index] < 0.001){return(c("***",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-            else if(tukeyPval[index] < 0.01){return(c("**",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-            else if(tukeyPval[index] < 0.05){return(c("*",strsplit(names(tukeyPval)[index],split = "-")[[1]]))}
-        }))
-        ListSignif = ListSignif[which(sapply(ListSignif,length) > 0)]
-        ListSignifPosIndex = lapply(ListSignif,function(hit){
-            return(c(which(levels(plotDf$TreatmentFSOM) == hit[2]),which(levels(plotDf$TreatmentFSOM) == hit[3])))})
-        minTr=min(plotDf$PP,na.rm=T)
-        maxTr=max(plotDf$PP,na.rm=T)
-        boxplot(PP ~ TreatmentFSOM,
-                data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),
-                xlab="",
-                ylab=PlotLab,
-                cex.axis=.5,
-                cex.main=.8,
-                cex.lab=.5,
-                ylim=c(minTr,length(ListSignif)*abs(maxTr-minTr)*.2+maxTr)
-                )
-        if (length(ListSignif) > 0) {
-            if (length(tukeyPval) > 1) ## more than one pair of comparison
-                {
-                    for (signifIndex in (1:length(ListSignif))) {
-                        ##  print(maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2)
-                        segments(y0=maxTr+(signifIndex-.4)*abs(maxTr-minTr)*.2,
-                                 x0= ListSignifPosIndex[[signifIndex]][1],x1=ListSignifPosIndex[[signifIndex]][2])
-                        text(x=(ListSignifPosIndex[[signifIndex]][1]+ListSignifPosIndex[[signifIndex]][2])/2,y=maxTr+(signifIndex-.1)*abs(maxTr-minTr)*.2,
-                             labels=ListSignif[[signifIndex]][1])
-                    }
-                } else {
-                    segments(y0=maxTr+(1-.4)*abs(maxTr-minTr)*.2,
-                             x0= 1,x1=2)
-                    text(x=1+1/2,y=maxTr+(1-.1)*abs(maxTr-minTr)*.2,
-                             labels=ListSignif[1])
-                    }
-       }
-       beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
-       return(tukeyPval)
-    })
-    ## finish the construction of PvalTable, write csv files 
-    if(is.matrix(PvalTukeyTable)) {
-        PvalTukeyTable=as.data.frame(PvalTukeyTable)
-    }
-    else {PvalTukeyTable=as.data.frame(t(PvalTukeyTable))}
-    names(PvalTukeyTable)=paste("mtcl",colnames(fSOMnbrs)[1:metaclNumber],sep="_")
-    par(mfrow=c(1,1),mar=c(3,2,3,1),cex=.5)
-  
-    if(length(MarkerIndex) == 1) {write.table(PvalTukeyTable,paste(Title,"_TukeyPval",Marker,"Metacl.csv",sep=""),sep=";",col.names = NA)} else {
-    if (Norm) {write.table(PvalTukeyTable,paste(Title,"_TukeyPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
-    else {write.table(PvalTukeyTable,paste(Title,"_TukeyPvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}}
-    DF4lm = data.frame(y=c(fSOMnbrs),metaCl = c(sapply(colnames(fSOMnbrs),function(name){rep(name,length(fSOMnbrs[,1]))})),treat = rep(c(sapply(row.names(fSOMnbrs),function(name){as.character(treatmentTable$Treatment[which(treatmentTable$files == name)])})),length(fSOMnbrs[1,])))
-    DF4lm$treat = factor(DF4lm$treat,levels=c(ControlTreatment,setdiff(unique(DF4lm$treat),ControlTreatment)))
-    pvalLmMatrix = t(do.call(rbind,lapply(colnames(fSOMnbrs),function(metaCl){summary(lm(y ~ treat,data = DF4lm[which(DF4lm$metaCl == metaCl),]))$coefficient[-1,4]})))
-    colnames(pvalLmMatrix) = paste("mtcl",colnames(fSOMnbrs),sep= "_")
-    
-    row.names(pvalLmMatrix) = setdiff(unique(DF4lm$treat),ControlTreatment)
-    pvalLmMatrix = rbind(rep(1,length(fSOMnbrs[1,])),pvalLmMatrix)
-    row.names(pvalLmMatrix)[1] = ControlTreatment
-    DF4lm$metaCl = factor(DF4lm$metaCl,level=unique(DF4lm$metaCl)) ## to get the right ordering after "by" function
-    meanMatrix  = t(by(DF4lm$y,list(DF4lm$metaCl,DF4lm$treat),function(x){mean(x)}))
-    attr(meanMatrix,"class") = NULL
-    attr(meanMatrix,"call") = NULL
-    colnames(meanMatrix) = paste("mtcl",colnames(meanMatrix),sep= "_")
-    pvalAnnotationMatrix = apply(pvalLmMatrix,c(1,2),function(x){
-    if (x < 0.0001){return("****")}
-            else if(x < 0.001){return("***")}
-            else if(x < 0.01){return("**")}
-            else if(x < 0.05){return("*")} else {return("")}})
-    if (length(MarkerIndex) == 1) {
-     heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=paste("Means of ",PlotLab,sep=""),notecex=.5)} else {
-    heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="column",col = bluered(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=paste("Means of ",PlotLab,sep=""),distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5)}
-    
-    heatmap.2(as.matrix(PvalTukeyTable),Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(5,8),density.info="none")
-    dev.off()
-    retData=list(fSOMnbrs,PvalTukeyTable,pvalLmMatrix)
-
-    if(length(MarkerIndex) == 1) {write.table(PvalTukeyTable,paste(Title,"_LmPval",Marker,"Metacl.csv",sep=""),sep=";",col.names = NA)} else {
-    if (Norm) {write.table(pvalLmMatrix,paste(Title,"_LmPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
-    else {write.table(pvalLmMatrix,paste(Title,"_LmPvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}}
-    
-    names(retData)=c("Sizes","PvalTukey","PvalLm")
-    return(retData)
-}
-
-BoxPlotMarkerMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,Marker="") {
+## User tool: Box plot of metacluster, For a given marker. 
+## treatmentTable should be a dataframe with two column: "Treatment", "files". Robust specifies either Tukey/lm or Dunn (non adjusted p-values).
+## ClustHeat=FALSE for no clustering on heatmap.
+BoxPlotMarkerMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,Marker,Robust=TRUE,ClustHeat=TRUE) {
     MarkerIndex = which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
     if (length(MarkerIndex) < 1) {stop("No marker ",Marker," in data")} else {
-    BoxPlotMetaClustFull(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab="",Norm=FALSE,Marker) }
+    BoxPlotMetaClustFull(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab="",Norm=FALSE,Marker,Robust,ClustHeat) }
 }
 
-
-
+## To do:  put plotlabel in plotTreeSet; automatic naming of metaclusters (median or quartile); extract sub data from a single metacluster
