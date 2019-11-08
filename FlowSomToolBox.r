@@ -233,7 +233,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         if (is.null(treatmentTable$NormalizationFactor)) {stop("No column NormalizationFactor in annotation table")}
         NormFactors = sapply(row.names(fSOMnbrs),function(fileFCS){treatmentTable$NormalizationFactor[which(treatmentTable$files == fileFCS)]})
         for (index in 1:length(NormFactors)) {fSOMnbrs[index,] = fSOMnbrs[index,]/NormFactors[index] }
-        PlotLab=yLab
+        PlotLab=paste("size of ",yLab,sep="")
     }
     else {
         pctgs<-get_pctgsMT(TreeMetaCl$fSOMTree,TreeMetaCl$metaCl)
@@ -356,12 +356,11 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         }
 heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5)
     } else {
-        if (Robust) {if (Norm) {heatTitle = paste("Median size of ",PlotLab,sep="")} else {heatTitle = paste("Median % of ",PlotLab,sep="")}}
-        else {if (Norm) {heatTitle = paste("Mean size of ",PlotLab,sep="")} else {heatTitle = paste("Mean % of ",PlotLab,sep="")}}
-        heatTitle=paste(heatTitle,"(rel. to control, scaled)",sep="\n")
+        if (Robust) { heatTitle = paste("Median ",PlotLab,sep="")}
+        else {heatTitle = paste("Mean of ",PlotLab,sep="")}
+        heatTitle=paste(heatTitle,"\n(rel. to ",ControlTreatment,", scaled)",sep="")
         meanMatrix=apply(meanMatrix,2,function(x){(x-x[1])/sd(x,na.rm=T)})
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
-        print(meanMatrix)
         if (ClustHeat) {
             heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5)
         } 
