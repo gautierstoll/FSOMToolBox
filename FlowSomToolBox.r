@@ -357,7 +357,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
 heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5)
     } else {
         if (Robust) { heatTitle = paste("Median ",PlotLab,sep="")}
-        else {heatTitle = paste("Mean of ",PlotLab,sep="")}
+        else {heatTitle = paste("Mean ",PlotLab,sep="")}
         heatTitle=paste(heatTitle,"\n(rel. to ",ControlTreatment,", scaled)",sep="")
         meanMatrix=apply(meanMatrix,2,function(x){(x-x[1])/sd(x,na.rm=T)})
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
@@ -673,6 +673,23 @@ BoxPlotMarkerMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatme
     MarkerIndex = which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
     if (length(MarkerIndex) < 1) {stop("No marker ",Marker," in data")} else {
     BoxPlotMetaClustFull(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab="",Norm=FALSE,Marker,Robust,ClustHeat) }
+}
+
+MetaClusterNaming <- function(TreeMetaCl,Markers)
+{
+    lapply(unique(TreeMetaCl$metaCl),function(metaClust){
+            clusterList=which(TreeMetaCl$metaCl == metaClust)
+            metaClustIndices=unlist(sapply(clusterList,function(cluster){which(TreeMetaCl$fSOMTree$map$mapping[,1] == cluster)})) 
+            nameList = sapply(Markers,function(Marker){
+                MarkerIndex=which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
+                metaClustMedian=median(TreeMetaCl$fSOMTree$data[metaClustIndices,MarkerIndex],na.rm=T)
+                vectQuantiles=quantile(TreeMetaCl$fSOMTree$data[,MarkerIndex],na.rm=T)
+                nonRobustName = c(paste(Marker,"-",sep=""),paste(Marker,"+",sep=""))[as.numeric(metaClustMedian > vectQuantiles[3])+1]
+                robustName = c(paste(Marker,"-",sep=""),paste(Marker,"med",sep=""),paste(Marker,"+",sep=""))[as.numeric(metaClustMedian > vectQuantiles[2])+as.numeric(metaClustMedian > vectQuantiles[4])+1]
+                return(c(nonRobustName,robustName))
+            })
+            c(metaClust,apply(nameList,1,function(l){paste(l,collapse="")}))
+    })
 }
 
 ## To do:  put plotlabel in plotTreeSet; automatic naming of metaclusters (median or quartile); extract sub data from a single metacluster
