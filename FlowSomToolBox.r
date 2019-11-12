@@ -677,7 +677,7 @@ BoxPlotMarkerMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatme
 
 MetaClusterNaming <- function(TreeMetaCl,Markers)
 {
-    lapply(unique(TreeMetaCl$metaCl),function(metaClust){
+    metaClustListName=lapply(unique(TreeMetaCl$metaCl),function(metaClust){
             clusterList=which(TreeMetaCl$metaCl == metaClust)
             metaClustIndices=unlist(sapply(clusterList,function(cluster){which(TreeMetaCl$fSOMTree$map$mapping[,1] == cluster)})) 
             nameList = sapply(Markers,function(Marker){
@@ -686,10 +686,14 @@ MetaClusterNaming <- function(TreeMetaCl,Markers)
                 vectQuantiles=quantile(TreeMetaCl$fSOMTree$data[,MarkerIndex],na.rm=T)
                 nonRobustName = c(paste(Marker,"-",sep=""),paste(Marker,"+",sep=""))[as.numeric(metaClustMedian > vectQuantiles[3])+1]
                 robustName = c(paste(Marker,"-",sep=""),paste(Marker,"med",sep=""),paste(Marker,"+",sep=""))[as.numeric(metaClustMedian > vectQuantiles[2])+as.numeric(metaClustMedian > vectQuantiles[4])+1]
-                return(c(nonRobustName,robustName))
+                robustNameNoMed= c(paste(Marker,"-",sep=""),"",paste(Marker,"+",sep=""))[as.numeric(metaClustMedian > vectQuantiles[2])+as.numeric(metaClustMedian > vectQuantiles[4])+1]
+                return(c(nonRobustName,robustName,robustNameNoMed))
             })
             c(metaClust,apply(nameList,1,function(l){paste(l,collapse="")}))
     })
+    metaClustDF=as.data.frame(do.call(rbind,metaClustListName),stringsAsFactors=F)
+    names(metaClustDF)=c("number","nonRobustName","robustName","shortRobustName")
+    return(metaClustDF)
 }
 
 ## To do:  put plotlabel in plotTreeSet; automatic naming of metaclusters (median or quartile); extract sub data from a single metacluster
