@@ -677,6 +677,11 @@ BoxPlotMarkerMetaClust = function(TreeMetaCl,Title,treatmentTable,ControlTreatme
 
 MetaClusterNaming <- function(TreeMetaCl,Markers)
 {
+    MarkerIn = sapply(Markers,function(Marker){length(which(TreeMetaCl$fSOMTree$prettyColnames == Marker))})
+    Markers = Markers[which(MarkerIn > 0)]
+    print(paste("Use Marker",Markers))
+
+        
     metaClustListName=lapply(unique(TreeMetaCl$metaCl),function(metaClust){
             clusterList=which(TreeMetaCl$metaCl == metaClust)
             metaClustIndices=unlist(sapply(clusterList,function(cluster){which(TreeMetaCl$fSOMTree$map$mapping[,1] == cluster)})) 
