@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.7
+## Version 0.8
 
 tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -34,6 +34,277 @@ library(dunn.test)
 if (tmpIsV3p6) {
     library(CytoML)
     }
+## Internal tool: PlotStar with bigger legend
+PlotStarsBigLeg <- function(fsom, 
+                      markers=fsom$map$colsUsed, 
+                      view="MST", #"grid","tSNE"
+                      colorPalette=grDevices::colorRampPalette(
+                        c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", 
+                          "yellow", "#FF7F00", "red", "#7F0000")),
+                      starBg = "white",
+                      backgroundValues = NULL,
+                      backgroundColor = function(n){
+                        grDevices::rainbow(n, alpha=0.3)},
+                      backgroundLim = NULL,
+                      backgroundBreaks = NULL,
+                      backgroundSize = NULL,
+                      thresholds=NULL,
+                      legend=TRUE,
+                      query=NULL,
+                      main=""){
+    # Add star chart option to iGraph
+    add.vertex.shape("star", clip=igraph.shape.noclip, plot=mystarBL, 
+                    parameters=list(vertex.data=NULL,vertex.cP = colorPalette,
+                                    vertex.scale=TRUE, vertex.bg = starBg))
+    
+    if(is.null(thresholds)){
+        # Use MFIs
+        data <- fsom$map$medianValues[, markers,drop=FALSE]
+        scale <- TRUE
+    } else {
+        # scale thresholds same as data
+        if(fsom$transform){
+            warning("Thresholds should be given in the transformed space")
+        }
+        if(!is.null(fsom$scaled.center)){
+          thresholds <- scale(t(thresholds), 
+                              center = fsom$scaled.center[markers],
+                              scale = fsom$scaled.scale[markers])
+        }
+        # Use pctgs of cells above threshold as star plot values
+        data <-
+            t(sapply(seq_len(fsom$map$nNodes), function(i) {
+                res = NULL
+                for(m in seq_along(markers)){
+                    res = c(res, 
+                            sum(subset(fsom$data, 
+                               fsom$map$mapping[,1] == i)[,
+                                                  markers[m]] > thresholds[m])/
+                            sum(fsom$map$mapping[,1] == i))
+                    
+                }
+                res
+            }))
+        scale <- FALSE
+    }
+    
+    # Choose layout type
+    switch(view,
+        MST  = { layout <- fsom$MST$l 
+                    lty <- 1},
+        grid = { layout <- as.matrix(fsom$map$grid)
+                    lty <- 0},
+        tSNE = { layout <- fsom$MST$l2
+                    lty <- 0}, 
+        stop("The view should be MST, grid or tSNE. tSNE will only work
+                   if you specified this when building the MST.")
+    )
+    
+    # Choose background colour
+    if (!is.null(backgroundValues)) {
+        background <- computeBackgroundColorBL(backgroundValues,backgroundColor,
+                                             backgroundLim, backgroundBreaks)
+        if (is.null(backgroundSize)) { 
+          backgroundSize <- fsom$MST$size
+          backgroundSize[backgroundSize == 0] <- 3
+        }
+    } else {
+        background <- NULL
+    }
+    
+    # Save plot window settings and minimize margin
+    oldpar <- graphics::par(no.readonly = TRUE)
+    graphics::par(mar=c(1,1,1,1))
+    
+    # Add legend
+    if(legend){
+        if(!is.null(backgroundValues)){
+            # Make plot with folowing layout
+            # 1 3
+            # 2 3
+            graphics::layout(matrix(c(1,1,3,3,2,2), 3, 2, byrow = TRUE), 
+                    widths=c(1), heights=c(1,3,1))
+        } else {
+            graphics::layout(matrix(c(1,2), 1, 2, byrow = TRUE), 
+                   widths=c(1,2), heights=c(1))
+        }
+         
+       if(is.null(query)){
+            plotStarLegendBL(fsom$prettyColnames[markers], 
+                            colorPalette(ncol(data)))
+        } else {
+            plotStarQuery(fsom$prettyColnames[markers],
+                            values=query == "high",
+                            colorPalette(ncol(data)))
+        }
+        
+        if(!is.null(backgroundValues)){
+            PlotBackgroundLegendBL(backgroundValues,background)
+        }
+    }
+    
+    # Plot the actual graph
+    igraph::plot.igraph(fsom$MST$g, 
+                        vertex.shape = "star", 
+                        vertex.label = NA, 
+                        vertex.size = fsom$MST$size, 
+                        vertex.data = data,
+                        vertex.cP = colorPalette(ncol(data)),
+                        vertex.scale = scale,
+                        layout = layout, 
+                        edge.lty = lty,  
+                        mark.groups = background$groups, 
+                        mark.col = background$col[background$values], 
+                        mark.border = background$col[background$values],
+                        mark.expand	= backgroundSize,
+                        main=main
+    )
+    # Reset plot window
+    graphics::par(oldpar)
+    graphics::layout(1)
+}
+## Internal tool, for BigLegendPlot
+computeBackgroundColorBL <- function(backgroundValues, 
+                                    backgroundColor,
+                                    backgroundLim = NULL,
+                                    backgroundBreaks = NULL){
+    # Choose background colour
+    backgroundList <- list()
+    backgroundColors <- NULL
+    if(!is.null(backgroundValues)){
+        if(is.numeric(backgroundValues)){
+            backgroundList <- as.list(seq_along(backgroundValues))
+            
+            if(class(backgroundColor)=="function" & 
+               !is.null(backgroundBreaks) & 
+               length(backgroundBreaks)>1)
+            {
+                backgroundColor <- backgroundColor(length(backgroundBreaks))
+            } else if (class(backgroundColor)=="function"){
+                backgroundColor <- backgroundColor(100)
+                backgroundBreaks <- length(backgroundColor)
+            } else if (is.null(backgroundBreaks)){
+                backgroundBreaks <- length(backgroundColor)
+            }
+            
+            if(length(backgroundLim) > 0){
+                ids <- cut(c(backgroundLim,backgroundValues),
+                           backgroundBreaks
+                )[-c(seq_along(backgroundLim))]
+            } else {
+                ids <- cut(backgroundValues,
+                           backgroundBreaks)
+            }
+            backgroundValues <- ids
+#             backgroundColors <- backgroundColor[ids]    
+        } else {
+            if(! is.factor(backgroundValues)){
+                backgroundValues <- as.factor(backgroundValues)
+            }
+            
+            backgroundList <- as.list(seq_along(backgroundValues))
+            
+            if(class(backgroundColor)=="function"){
+                backgroundColor <- backgroundColor(
+                    length(levels(backgroundValues)))
+            }
+            
+            if(length(backgroundColor) < length(levels(backgroundValues))){
+                stop("You specified less backgroundcolours than groups.")
+            }
+            
+        }    
+    }
+    backgroundColors <- backgroundColor[backgroundValues]    
+
+    list(values=backgroundValues,
+         col=backgroundColor,
+         groups=backgroundList)
+}
+## Internal tool, for BL
+plotStarLegendBL <- function(labels, colors=grDevices::rainbow(length(labels)),
+                            main=""){
+    graphics::plot(1, type="n", xlab="", ylab="", 
+        xlim=c(-10, 10), ylim=c(-3, 3),asp=1,
+        bty="n",xaxt="n",yaxt="n",main=main)
+    
+    graphics::stars(matrix(c(1:(2*length(labels))),nrow=2),col.segments=colors,
+        locations=c(0,0),draw.segments = TRUE,add=TRUE,
+        inches=FALSE)
+    n <- length(labels)
+    angle <- 2*pi / n
+    angles <- seq(angle/2,2*pi,by=angle)
+    
+    left <- (angles > (pi/2) & angles < (3*pi/2))
+    x <- c(2,-2)[left+1]
+    y_tmp <- c(seq(-2,2,by= 4/(sum(!left)+1))[-c(1,sum(!left)+2)],
+                seq(2,-2,by=-4/(sum(left)+1))[-c(1,sum(left)+2)])
+    y <- shiftFunctionBL(y_tmp,max((cummax(y_tmp)<0)*seq_along(y_tmp)))
+    
+    for(i in seq_along(labels)){
+        graphics::text(x= x[i], 
+            y= y[i],
+            labels=labels[i],
+            adj = c(as.numeric(left)[i],0.5),
+            cex = 0.5)
+        
+        graphics::lines(x=c(x[i]+c(-0.2,0.2)[left[i]+1],
+                c(1.5,-1.5)[left[i]+1],
+                cos(angles[i])),
+            y=c(y[i],
+                y[i],
+                sin(angles[i])),
+            col=colors[i],
+            lwd=2)    
+    }
+}
+
+##Internal tool, for Big Legend
+shiftFunctionBL <- function(x,n){
+    c(x[(n+1):length(x)],x[1:n])
+}
+##Internal tool, for Big Legend
+PlotBackgroundLegendBL <- function(backgroundValues, background, 
+                                 main="Background"){
+    graphics::plot.new()
+    if(is.numeric(backgroundValues)) {
+        legendContinuous(background$col,
+                         as.numeric(gsub(".*,","",
+                                         gsub("].*","",
+                                              levels(background$values)))))
+    } else {
+        graphics::legend("center", legend=levels(background$values),
+               fill=background$col, 
+               cex=0.7, 
+               ncol =  ceiling(length(levels(background$values)) / 10),
+               bty="n",
+               title=main)       
+    }
+}
+##Internal tool, for Big Legend
+mystarBL <- function(coords, v=NULL, params) {
+    vertex.color <- params("vertex", "color")
+    if (length(vertex.color) != 1 && !is.null(v)) {
+        vertex.color <- vertex.color[v]
+    }
+    vertex.size    <- 1/200 * params("vertex", "size")
+    if (length(vertex.size) != 1 && !is.null(v)) {
+        vertex.size <- vertex.size[v]
+    }
+    data <- params("vertex", "data")
+    cP <- params("vertex","cP")
+    scale <- params("vertex","scale")
+    bg <- params("vertex","bg")
+    graphics::symbols(coords[, 1], coords[, 2], circles = vertex.size, 
+                      inches = FALSE, bg = bg, bty='n', add=TRUE) 
+    graphics::stars(data, locations = coords, labels = NULL,scale=scale, 
+            len = vertex.size, col.segments = cP, 
+            draw.segments = TRUE, mar = c(0, 0, 0, 0), add=TRUE, 
+            inches=FALSE)
+    
+}
+
+
 ## Internal tool: corrected parse_flowjo
 
 if (tmpIsV3p6) {
@@ -209,6 +480,7 @@ TukeyTestSarah = function(fSOMTable, metaClust){TukeyHSD(aov(as.formula(paste(me
 BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatment,BottomMargin,yLab,Norm=FALSE,Marker="",Robust,ClustHeat)
 {   
     ## Search for the marker
+    treatmentTable$Treatment=gsub(" ","_",treatmentTable$Treatment,fixed=T)
     MarkerIndex = which(TreeMetaCl$fSOMTree$prettyColnames == Marker)
     if(length(MarkerIndex) == 1) {
         print(paste("User marker:",Marker,":",names(TreeMetaCl$fSOMTree$prettyColnames)[MarkerIndex]))
@@ -350,33 +622,39 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
             else if(x < 0.01){return("**")}
             else if(x < 0.05){return("*")} else {return("")}})
     if (length(MarkerIndex) == 1) {
+        colMarginSize=max(c(5,.5*max(sapply(colnames(meanMatrix),nchar))))
+        rowMarginSize=max(c(8,.5*max(sapply(row.names(meanMatrix),nchar))))
         if (Robust) {heatTitle = paste("Median MFI of ",PlotLab,sep="")} else {heatTitle = paste("Mean MFI of ",PlotLab,sep="")}
         if (ClustHeat) {
-            heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5)
+            heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5,margins=c(colMarginSize,rowMarginSize))
         }
-heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5)
+        heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5,margins=c(colMarginSize,rowMarginSize))
     } else {
+        colMarginSize=max(c(5,.5*max(sapply(colnames(meanMatrix[-1,]),nchar))))
+        rowMarginSize=max(c(8,.5*max(sapply(row.names(meanMatrix[-1,]),nchar))))
         if (Robust) { heatTitle = paste("Median ",PlotLab,sep="")}
         else {heatTitle = paste("Mean ",PlotLab,sep="")}
         heatTitle=paste(heatTitle,"\n(rel. to ",ControlTreatment,", scaled)",sep="")
         meanMatrix=apply(meanMatrix,2,function(x){(x-x[1])/sd(x,na.rm=T)})
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
         if (ClustHeat) {
-            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5)
+            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
         } 
-            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5)   
+            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))   
     }
     matrixPval4Heat=as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")]
+    colMarginSize=max(c(5,.5*max(sapply(colnames(matrixPval4Heat),nchar))))
+    rowMarginSize=max(c(8,.5*max(sapply(row.names(matrixPval4Heat),nchar))))
     if (Robust) {
         if (ClustHeat) {
-            heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(5,8),density.info="none")
+            heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none")
 }       
-            heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(5,8),density.info="none")
+            heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none")
     } else {
              if (ClustHeat) {
-                 heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(5,8),density.info="none")
+                 heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none")
              }
-                 heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(5,8),density.info="none") }      
+             heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none") }      
     dev.off()
     retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
 
@@ -424,10 +702,10 @@ PlotStarsMSTRm <- function(fSOMObject,metaClustFactors,mainTitle,nbRm=0)
        fSOM4Plot$map$medianValues=fSOMObject$map$medianValues[indexKeep,]
        fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
        fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
-       PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)
+       PlotStarsBigLeg(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)
     }
     else
-        {PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)}
+        {PlotStarsBigLeg(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)}
 
 }
 
@@ -448,12 +726,12 @@ PlotStarsMSTCondRm <- function(fSOMObject,metaClustFactors,condIndex,mainTitle,n
         fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),,drop=F],2,function(x){median(x)})}))[indexKeep,]
         fSOM4Plot$MST$graph=induced_subgraph(fSOMObject$MST$graph,indexKeep)
         fSOM4Plot$MST$l = fSOMObject$MST$l[indexKeep,]
-        PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)
+        PlotStarsBigLeg(fSOM4Plot,backgroundValues = as.factor(metaClustFactors[indexKeep]), main=mainTitle)
     }
     else {
         fSOM4Plot$MST$size = sqrt(clSizes)/max(sqrt(clSizes))*15
         fSOM4Plot$map$medianValues = t(sapply(1:length(fSOMObject$map$medianValues[,1]),function(i){apply(fSOMObject$data[intersect(dataIndex,which(fSOMObject$map$mapping[,1] == i)),,drop=F],2,function(x){median(x)})}))
-         PlotStars(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)
+         PlotStarsBigLeg(fSOM4Plot,backgroundValues = as.factor(metaClustFactors), main=mainTitle)
         }
 }
 
@@ -577,7 +855,7 @@ buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
     fSOM<-BuildMST(fSOM,silent = FALSE,tSNE=FALSE)
     fSOM$prettyColnames =  fSOMNicePrettyColNames
     metacl<-metaClustering_consensus(fSOM$map$codes,k=metaClNb,seed=fSOMSeed)
-    PlotStars(fSOM,backgroundValues = as.factor(metacl))
+    PlotStarsBigLeg(fSOM,backgroundValues = as.factor(metacl))
     return(list(fSOMTree = fSOM,metaCl = metacl))
 }
 
