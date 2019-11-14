@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.9.0
+## Version 0.9.2
 
 tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -983,20 +983,21 @@ MetaClusterNaming <- function(TreeMetaCl,Markers)
 }
 
 ## To do:  put plotlabel in plotTreeSet; automatic naming of metaclusters (median or quartile); extract sub data from a single metacluster
-DataFromMetaClust <- function(FSOMData,TreeMeTaCl,MetaClusters)
+DataFromMetaClust <- function(FSOMData,TreeMetaCl,MetaClusters)
 {
   newFSOMData=FSOMData[-2]
-  Clusters = unlist(lapply(1:4,function(x){which(TreeMeTaCl$metaCl == x)}))
-  ClusterIndices = unlist(lapply(Clusters,function(x){which(TreeMeTaCl$fSOMTree$map$mapping[,1] == x)}))
+  Clusters = unlist(lapply(MetaClusters,function(x){which(TreeMetaCl$metaCl == x)}))
+  ClusterIndices = unlist(lapply(Clusters,function(x){which(TreeMetaCl$fSOMTree$map$mapping[,1] == x)}))
   newFSOMData$fSOMData$data=FSOMData$fSOMData$data[ClusterIndices,]
   metaDataLengthKept=lapply(FSOMData$fSOMData$metaData,function(x){
     length(intersect((x[1]:x[2]),ClusterIndices))
   })
+  if (length(which(metaDataLengthKept < 1))) {print(paste("Remove files:",names(which(metaDataLengthKept < 1))))}
   keepFilesIndices = which(metaDataLengthKept > 0)
-  LastFilesIndex=cumsum(metadataLengthKept[keepFilesIndices])
+  LastFilesIndex=cumsum(metaDataLengthKept[keepFilesIndices])
   FirstFilesIndex=c(1,LastFilesIndex[-length(LastFilesIndex)]+1)
   newMetaData=lapply(1:length(LastFilesIndex),function(x){unname(c(FirstFilesIndex[x],LastFilesIndex[x]))})
-  names(newMetaData)=names(FirstFilesIndex)
+  names(newMetaData)=names(LastFilesIndex)
   newFSOMData$fSOMData$metaData=newMetaData
   return(newFSOMData)
 }
