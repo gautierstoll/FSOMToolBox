@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.8.1
+## Version 0.9.0
 
 tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -847,6 +847,7 @@ DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube",compensate
 ## User tool: build FSOM tree with the metacluster, plot the tree
 buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
 {
+  set.seed(fSOMSeed)
     ff<-fSOMDloaded$flJoDataGated$flowSet[[1]]
     fSOMNicePrettyColNames=gsub(" <.*", "", fSOMDloaded$fSOMData$prettyColnames)
     colNamesIndices=unlist(lapply(prettyNames,function(name){which(fSOMNicePrettyColNames == name)}))
@@ -982,3 +983,22 @@ MetaClusterNaming <- function(TreeMetaCl,Markers)
 }
 
 ## To do:  put plotlabel in plotTreeSet; automatic naming of metaclusters (median or quartile); extract sub data from a single metacluster
+DataFromMetaClust <- function(FSOMData,TreeMeTaCl,MetaClusters)
+{
+  newFSOMData=FSOMData[-2]
+  Clusters = unlist(lapply(1:4,function(x){which(TreeMeTaCl$metaCl == x)}))
+  ClusterIndices = unlist(lapply(Clusters,function(x){which(TreeMeTaCl$fSOMTree$map$mapping[,1] == x)}))
+  newFSOMData$fSOMData$data=FSOMData$fSOMData$data[ClusterIndices,]
+  metaDataLengthKept=lapply(FSOMData$fSOMData$metaData,function(x){
+    length(intersect((x[1]:x[2]),ClusterIndices))
+  })
+  keepFilesIndices = which(metaDataLengthKept > 0)
+  LastFilesIndex=cumsum(metadataLengthKept[keepFilesIndices])
+  FirstFilesIndex=c(1,LastFilesIndex[-length(LastFilesIndex)]+1)
+  newMetaData=lapply(1:length(LastFilesIndex),function(x){unname(c(FirstFilesIndex[x],LastFilesIndex[x]))})
+  names(newMetaData)=names(FirstFilesIndex)
+  newFSOMData$fSOMData$metaData=newMetaData
+  return(newFSOMData)
+}
+  
+
