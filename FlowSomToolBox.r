@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.8
+## Version 0.8.1
 
 tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -525,12 +525,14 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     metaclNumber=length(fSOMnbrs[1,])
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0)) ## page have 6x6 boxplots
     fSOMnbrs=fSOMnbrs[,unique(unique(TreeMetaCl$metaCl))]
+    cex4Title=1/(1+log(max(sapply(colnames(fSOMnbrs),nchar)))/2)
     for (metaCl in (1:metaclNumber)){ ## boxplots with no annotations
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM) ## dataframe for box plot
-        boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=.8,cex.lab=.5)
+        boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=cex4Title,cex.lab=.5)
         beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),add=T,cex=.5,col="red")
     }
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
+    
     PvalPairwiseTable = sapply((1:metaclNumber),function(metaCl) ## construct pval table of tukey pairwise comparison test, boxplots with p-values annotation
     {
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM)
@@ -558,7 +560,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
                 xlab="",
                 ylab=PlotLab,
                 cex.axis=.5,
-                cex.main=.8,
+                cex.main=cex4Title,
                 cex.lab=.5,
                 ylim=c(minTr,length(ListSignif)*abs(maxTr-minTr)*.2+maxTr)
                 )
