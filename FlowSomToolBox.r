@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.9.3.1
+## Version 0.9.3.2
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -352,7 +352,7 @@ if (tmpIsV3p6) {
     }
 }
 ## Internal tool: GetClusters ?
-if(!exists("GetClusters",mode="function")) {
+##if(!exists("GetClusters",mode="function")) {
     GetClusters <- function(fsom) {
       if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
         fsom <- fsom$FlowSOM
@@ -362,10 +362,10 @@ if(!exists("GetClusters",mode="function")) {
       }
       return(fsom$map$mapping[,1])
     }
-}
+##}
     
 ## Internal tool: GetMetClusters ?
-if(!exists("GetMetaclusters",mode="function")) {
+##if(!exists("GetMetaclusters",mode="function")) {
     GetMetaclusters <- function(fsom, meta = NULL){
       
       if (class(fsom) == "list" & !is.null(fsom$FlowSOM)) {
@@ -383,10 +383,10 @@ if(!exists("GetMetaclusters",mode="function")) {
       
       return(meta[fsom$map$mapping[,1]])
     } 
-}
+##}
     
     ## Internal tool: Seems that PlotLabels diseapear...
-if(!exists("PlotLabels",mode="function")) {
+##if(!exists("PlotLabels",mode="function")) {
     
     PlotLabels <- function(fsom,
                        labels,
@@ -430,7 +430,7 @@ if(!exists("PlotLabels",mode="function")) {
                             main=main)
         
     }
-}
+##}
     
 
 ## Internal tool: extract meta-clusters count ratio in percent
