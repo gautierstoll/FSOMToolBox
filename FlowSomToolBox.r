@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.9.2
+## Version 0.9.3
 
 tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -525,7 +525,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     metaclNumber=length(fSOMnbrs[1,])
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0)) ## page have 6x6 boxplots
     fSOMnbrs=fSOMnbrs[,unique(unique(TreeMetaCl$metaCl))]
-    cex4Title=1/(1+log(max(sapply(colnames(fSOMnbrs),nchar)))/2)
+    cex4Title=exp(-max(sapply(colnames(fSOMnbrs),nchar))/50)
     for (metaCl in (1:metaclNumber)){ ## boxplots with no annotations
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM) ## dataframe for box plot
         boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=cex4Title,cex.lab=.5)
@@ -624,39 +624,58 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
             else if(x < 0.01){return("**")}
             else if(x < 0.05){return("*")} else {return("")}})
     if (length(MarkerIndex) == 1) {
-        colMarginSize=max(c(5,.5*max(sapply(colnames(meanMatrix),nchar))))
-        rowMarginSize=max(c(8,.5*max(sapply(row.names(meanMatrix),nchar))))
+        colMarginSize=20-18*exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/10)
+        rowMarginSize=20-18*exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/10)
+        colCex4Plot=exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/70)
+        rowCex4Plot=exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/70)
+        
         if (Robust) {heatTitle = paste("Median MFI of ",PlotLab,sep="")} else {heatTitle = paste("Mean MFI of ",PlotLab,sep="")}
         if (ClustHeat) {
-            heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5,margins=c(colMarginSize,rowMarginSize))
+            heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
+                      notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
+                      notecex=.5,margins=c(colMarginSize,rowMarginSize))
         }
-        heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,notecex=.5,margins=c(colMarginSize,rowMarginSize))
+        heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
+                  notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
+                  notecex=.5,margins=c(colMarginSize,rowMarginSize))
     } else {
-        colMarginSize=max(c(5,.5*max(sapply(colnames(meanMatrix[-1,]),nchar))))
-        rowMarginSize=max(c(8,.5*max(sapply(row.names(meanMatrix[-1,]),nchar))))
+        colMarginSize=20-18*exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/10)
+        rowMarginSize=20-18*exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/10)
+        colCex4Plot=exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/70)
+        rowCex4Plot=exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/70)
         if (Robust) { heatTitle = paste("Median ",PlotLab,sep="")}
         else {heatTitle = paste("Mean ",PlotLab,sep="")}
         heatTitle=paste(heatTitle,"\n(rel. to ",ControlTreatment,", scaled)",sep="")
         meanMatrix=apply(meanMatrix,2,function(x){(x-x[1])/sd(x,na.rm=T)})
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
         if (ClustHeat) {
-            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
+            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
+                      notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
+                      distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
         } 
-            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],notecol = "black",trace = "none",cexRow = .8,cexCol=.8,density.info="none",main=heatTitle,distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))   
+            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
+                      notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
+                      distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))   
     }
     matrixPval4Heat=as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")]
-    colMarginSize=max(c(5,.5*max(sapply(colnames(matrixPval4Heat),nchar))))
-    rowMarginSize=max(c(8,.5*max(sapply(row.names(matrixPval4Heat),nchar))))
+    colMarginSize=20-18*exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/10)
+    rowMarginSize=20-18*exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/10)
+    colCex4Plot=exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/70)
+    rowCex4Plot=exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/70)
     if (Robust) {
         if (ClustHeat) {
-            heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none")
+            heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
+                      trace="none",main="Dunn p-values",cexRow = rowCex4Plot,cexCol=colCex4Plot,margins=c(colMarginSize,rowMarginSize),density.info="none")
 }       
-            heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Dunn p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none")
+            heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
+                      trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Dunn p-values",margins=c(colMarginSize,rowMarginSize),density.info="none")
     } else {
              if (ClustHeat) {
-                 heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none")
+                 heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
+                           trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Tukey p-values",margins=c(colMarginSize,rowMarginSize),density.info="none")
              }
-             heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),trace="none",cexRow=.8,main="Tukey p-values",cexCol=.8,margins=c(colMarginSize,rowMarginSize),density.info="none") }      
+             heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
+                       trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Tukey p-values",margins=c(colMarginSize,rowMarginSize),density.info="none") }      
     dev.off()
     retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
 
