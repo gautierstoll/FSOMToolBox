@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.9.3.2
+## Version 0.9.4.2
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -631,7 +631,9 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         rowCex4Plot=exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/70)
         
         if (Robust) {heatTitle = paste("Median MFI of ",PlotLab,sep="")} else {heatTitle = paste("Mean MFI of ",PlotLab,sep="")}
+        par(cex.main=exp(-nchar(heatTitle)/70))
         if (ClustHeat) {
+            
             heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       notecex=.5,margins=c(colMarginSize,rowMarginSize))
@@ -646,10 +648,12 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         rowCex4Plot=exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/70)
         if (Robust) { heatTitle = paste("Median ",PlotLab,sep="")}
         else {heatTitle = paste("Mean ",PlotLab,sep="")}
+        par(cex.main=exp(-max(c(nchar(heatTitle),(nchar(ControlTreatment)+18)))/70))
         heatTitle=paste(heatTitle,"\n(rel. to ",ControlTreatment,", scaled)",sep="")
         meanMatrix=apply(meanMatrix,2,function(x){(x-x[1])/sd(x,na.rm=T)})
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
         if (ClustHeat) {
+          par(cex.main=.5)
             heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
@@ -658,6 +662,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))   
     }
+    par(cex.main=1)
     matrixPval4Heat=as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")]
     colMarginSize=20-18*exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/10)
     rowMarginSize=20-18*exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/10)
