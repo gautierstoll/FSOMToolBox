@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.9.5
+## Version 0.9.6
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -522,7 +522,9 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     Treatments=unique(treatmentTable$Treatment)
     if(length(which(Treatments == ControlTreatment)) == 0) {stop(paste("No",ControlTreatment,"in annotation table"))}
     treatmentsFSOM=factor(treatmentsFSOM,levels=c(ControlTreatment,setdiff(Treatments,ControlTreatment))) # set control treatment at first
-    if(length(MarkerIndex) == 1) {pdf(file=paste(Title,"_BoxPlot",Marker,"Metacl.pdf",sep=""))} else {
+    if(length(MarkerIndex) == 1) {
+      pdf(file=gsub("/","_",paste(Title,"_BoxPlot",Marker,"Metacl.pdf",sep=""),fixed=T))
+      } else {
     if (Norm) {pdf(file=paste(Title,"_BoxPlotNormMetacl.pdf",sep=""))}
     else {pdf(file=paste(Title,"_BoxPlotPercentMetacl.pdf",sep=""))}}
     metaclNumber=length(fSOMnbrs[1,])
@@ -595,7 +597,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     names(PvalPairwiseTable)=paste("mtcl",colnames(fSOMnbrs)[1:metaclNumber],sep="_")
     par(mfrow=c(1,1),mar=c(3,2,3,1),cex=.5)
   
-    if(length(MarkerIndex) == 1) {write.table(PvalPairwiseTable,paste(Title,"_PairwisePval",Marker,"Metacl.csv",sep=""),sep=";",col.names = NA)} else {
+    if(length(MarkerIndex) == 1) {write.table(PvalPairwiseTable,gsub("/","_",paste(Title,"_PairwisePval",Marker,"Metacl.csv",sep=""),fixed=T),sep=";",col.names = NA)} else {
     if (Norm) {write.table(PvalPairwiseTable,paste(Title,"_PairwisePvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
     else {write.table(PvalPairwiseTable,paste(Title,"_PairwisePvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}}
 
@@ -689,7 +691,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     dev.off()
     retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
 
-    if(length(MarkerIndex) == 1) {write.table(pvalLmMatrix,paste(Title,"_LmPval",Marker,"Metacl.csv",sep=""),sep=";",col.names = NA)} else {
+    if(length(MarkerIndex) == 1) {write.table(pvalLmMatrix,gsub("/","_",paste(Title,"_LmPval",Marker,"Metacl.csv",sep=""),fixed=T),sep=";",col.names = NA)} else {
     if (Norm) {write.table(pvalLmMatrix,paste(Title,"_LmPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
     else {write.table(pvalLmMatrix,paste(Title,"_LmPvalPercentMetacl.csv",sep=""),sep=";",col.names = NA)}}
     
