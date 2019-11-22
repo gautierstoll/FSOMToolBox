@@ -311,7 +311,8 @@ mystarBL <- function(coords, v=NULL, params) {
 if (tmpIsV3p6) {
     parse_flowjo_CytoML <- function (files, wsp_file, group = "All Samples", plot = FALSE)
     {
-        wsp <- flowWorkspace::openWorkspace(wsp_file)
+        ## wsp <- flowWorkspace::openWorkspace(wsp_file)
+      wsp <- CytoML::openWorkspace(wsp_file)
         o <- capture.output(gates <- suppressMessages(CytoML::parseWorkspace(wsp,
                                                                              group)))
         files_in_wsp <- gates@data@origSampleVector
