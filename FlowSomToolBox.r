@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.9.6
+## Version 0.9.7
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -305,14 +305,50 @@ mystarBL <- function(coords, v=NULL, params) {
     
 }
 
+## Internal tool: new parse_flowjo for CytoML 1.12.0
 
+parse_flowjo_CytoML_v12 <- function (files, wsp_file, group = "All Samples")
+{
+  wsp <- CytoML::open_flowjo_xml(wsp_file)
+  o <- capture.output(gates <- suppressMessages(CytoML::flowjo_to_gatingset(wsp,
+                                                                       group)))
+  files_in_wsp <- gates@data@origSampleVector
+  counts <- as.numeric(gsub(".*_([0-9]*)$", "\\1", files_in_wsp))
+  result <- list()
+  for (file in files) {
+    print(paste0("Processing ", file))
+    file_id <- grep(gsub(".*/", "", file), files_in_wsp)
+    if (length(file_id) == 0) {
+      stop("File not found. Files available: ", gsub("_[0-9]*$",
+                                                   "\n", files_in_wsp))
+    }
+    gate_names <- flowWorkspace::gs_get_pop_paths(gates[[file_id]],path = "auto")
+    gatingMatrix <- matrix(FALSE, nrow = counts[file_id],
+      ncol = length(gate_names), dimnames = list(NULL,
+      gate_names))
+    for (gate in gate_names) {
+      gatingMatrix[, gate] <- flowWorkspace::gh_pop_get_indices(gates[[file_id]],gate)
+    }
+    ff <- flowWorkspace::getData(gates[[file_id]], "root")
+    ff@exprs[, "Time"] <- ff@exprs[, "Time"] * 100
+    result[[file]] <- list(flowFrame = ff, gates = gatingMatrix)
+  }
+  if (length(files) == 1) {
+    result <- result[[1]]
+  }
+  else {
+    result <- list(flowSet = flowCore::flowSet(lapply(result,
+                function(x) x$flowFrame)), gates = lapply(result,
+                     function(x) x$gates))
+  }
+  return(result)
+}
 ## Internal tool: corrected parse_flowjo
 
-if (tmpIsV3p6) {
     parse_flowjo_CytoML <- function (files, wsp_file, group = "All Samples", plot = FALSE)
     {
-        ## wsp <- flowWorkspace::openWorkspace(wsp_file)
-      wsp <- CytoML::openWorkspace(wsp_file)
+       wsp <- flowWorkspace::openWorkspace(wsp_file)
+      ## wsp <- CytoML::open_flowjo_xml(wsp_file)
         o <- capture.output(gates <- suppressMessages(CytoML::parseWorkspace(wsp,
                                                                              group)))
         files_in_wsp <- gates@data@origSampleVector
@@ -331,7 +367,7 @@ if (tmpIsV3p6) {
                 ncol = length(gate_names), dimnames = list(NULL,
                     gate_names))
             for (gate in gate_names) {
-                gatingMatrix[, gate] <- flowWorkspace::getIndiceMat(gates[[file_id]],
+                gatingMatrix[, gate] <- getIndiceMat(gates[[file_id]],
                     gate)
             }
             ff <- flowWorkspace::getData(gates[[file_id]], "root")
@@ -351,7 +387,7 @@ if (tmpIsV3p6) {
         }
         return(result)
     }
-}
+
 ## Internal tool: GetClusters ?
 ##if(!exists("GetClusters",mode="function")) {
     GetClusters <- function(fsom) {
@@ -867,15 +903,17 @@ DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube",compensate
         absoluteDirFCS=paste(getwd(),"/",dirFCS,"/",sep="")
         }
     files<-list.files(path = absoluteDirFCS , pattern=fcsPattern)
-    if (tmpIsV3p6) {
-        data<-parse_flowjo_CytoML(files,flowJoWS)}
+    if ((unlist(packageVersion("CytoML"))[1] == 1) & (unlist(packageVersion("CytoML"))[2] >= 12)) {
+      print("Parse flowJo within version 1.12 of CytoML")
+        data<-parse_flowjo_CytoML_v12(files,flowJoWS)}
     else {
-            data<-parse_flowjo(files,flowJoWS)
+            data<-parse_flowjo_CytoML(files,flowJoWS)
         }
     dataGated<-gating_subset(data,gatingName)
     fSOM<-ReadInput(dataGated$flowSet,compensate = compensate,transform = FALSE,scale = FALSE,scaled.center = TRUE,scaled.scale = TRUE,silent = FALSE)
     return(list(fSOMData=fSOM,flJoDataGated=dataGated))
 }
+
 ## User tool: build FSOM tree with the metacluster, plot the tree
 buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
 {
