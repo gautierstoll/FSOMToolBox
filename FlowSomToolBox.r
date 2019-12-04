@@ -626,10 +626,11 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
        beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
        return(pairwisePval)
     })
-    ## finish the construction of PvalTable, write csv files 
+    ## finish the construction of PvalTable, write csv files
     if(is.matrix(PvalPairwiseTable)) {
         PvalPairwiseTable=as.data.frame(PvalPairwiseTable)
     }
+    else if (is.list(PvalPairwiseTable)) {PvalPairwiseTable = as.data.frame(do.call(cbind,PvalPairwiseTable))}
     else {PvalPairwiseTable=as.data.frame(t(PvalPairwiseTable))}
     names(PvalPairwiseTable)=paste("mtcl",colnames(fSOMnbrs)[1:metaclNumber],sep="_")
     par(mfrow=c(1,1),mar=c(3,2,3,1),cex=.5)
@@ -654,8 +655,8 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     DF4lm$metaCl = factor(DF4lm$metaCl,level=unique(DF4lm$metaCl)) ## to get the right ordering after "by" function
     if (Robust) {
         meanMatrix  = t(by(DF4lm$y,list(DF4lm$metaCl,DF4lm$treat),function(x){median(x,na.rm=T)}))
-        print(row.names(meanMatrix))
-        print(pvalLmMatrix)
+       ## print(row.names(meanMatrix))
+      ##  print(pvalLmMatrix)
         pvalLmMatrix=pvalLmMatrix[row.names(meanMatrix),]
     } else {
         meanMatrix  = t(by(DF4lm$y,list(DF4lm$metaCl,DF4lm$treat),function(x){mean(x,na.rm=T)})) }
