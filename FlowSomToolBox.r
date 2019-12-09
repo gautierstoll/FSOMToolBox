@@ -15,10 +15,10 @@ tmpIsV3p6 = TRUE
 ##library(Rtsne)
 ##library("pheatmap")
 
-library("data.table")
+##library("data.table")
 
-library(reshape)
-library(reshape2)
+##library(reshape)
+##library(reshape2)
 
 library(ggplot2)
 
@@ -27,11 +27,11 @@ library(ggpubr)
 library(plyr)
 library(readr)
 library(dplyr)
-library(beeswarm)
+#library(beeswarm)
 
 library(gridExtra)
-library(gplots)
-library(dunn.test)
+#library(gplots)
+#library(dunn.test)
 if (tmpIsV3p6) {
     ##library(CytoML)
     }
@@ -592,7 +592,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     for (metaCl in (1:metaclNumber)){ ## boxplots with no annotations
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM) ## dataframe for box plot
         boxplot(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),xlab="",ylab=PlotLab,cex.axis=.5,cex.main=cex4Title,cex.lab=.5)
-        beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),add=T,cex=.5,col="red")
+        beeswarm::beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),add=T,cex=.5,col="red")
     }
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
 
@@ -600,7 +600,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     {
         plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM)
         if (Robust) {
-            invisible(capture.output(tmp <- dunn.test(plotDf$PP,plotDf$TreatmentFSOM)))
+            invisible(capture.output(tmp <- dunn.test::dunn.test(plotDf$PP,plotDf$TreatmentFSOM)))
             pairwisePval=tmp$P
             names(pairwisePval) = gsub(" ","",tmp$comparisons,fixed=T)
         } else {
@@ -699,11 +699,11 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         par(cex.main=exp(-nchar(heatTitle)/70))
         if (ClustHeat) {
 
-            heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
+            gplots::heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       notecex=.5,margins=c(colMarginSize,rowMarginSize))
         }
-        heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
+        gplots::heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
                   notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                   notecex=.5,margins=c(colMarginSize,rowMarginSize))
     } else {
@@ -719,11 +719,11 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
         if (ClustHeat) {
           par(cex.main=.5)
-            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
+            gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
         }
-            heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
+            gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
     }
@@ -735,17 +735,17 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     rowCex4Plot=exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/70)
     if (Robust) {
         if (ClustHeat) {
-            heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
+            gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
                       trace="none",main="Dunn p-values",cexRow = rowCex4Plot,cexCol=colCex4Plot,margins=c(colMarginSize,rowMarginSize),density.info="none")
 }
-            heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
+            gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
                       trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Dunn p-values",margins=c(colMarginSize,rowMarginSize),density.info="none")
     } else {
              if (ClustHeat) {
-                 heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
+                 gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
                            trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Tukey p-values",margins=c(colMarginSize,rowMarginSize),density.info="none")
              }
-             heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
+             gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
                        trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Tukey p-values",margins=c(colMarginSize,rowMarginSize),density.info="none") }
     dev.off()
     retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
@@ -926,13 +926,12 @@ DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube",compensate
         }
     files<-list.files(path = absoluteDirFCS , pattern=fcsPattern)
     if ((unlist(packageVersion("CytoML"))[1] == 1) & (unlist(packageVersion("CytoML"))[2] >= 12)) {
-      print("Parse flowJo within version 1.12 of CytoML")
+     ## print("Parse flowJo within version 1.12 of CytoML")
         data<-parse_flowjo_CytoML_v12(files,flowJoWS)}
     else {
             data<-parse_flowjo_CytoML(files,flowJoWS)
         }
     dataGated<-gating_subset_toolBox(data,gatingName)
-    print("done gating subset")
     fSOM<-FlowSOM::ReadInput(dataGated$flowSet,compensate = compensate,transform = FALSE,scale = FALSE,scaled.center = TRUE,scaled.scale = TRUE,silent = FALSE)
     return(list(fSOMData=fSOM,flJoDataGated=dataGated))
 }
