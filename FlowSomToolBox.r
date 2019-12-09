@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.9.7
+## Version 0.10.0
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -20,16 +20,16 @@ tmpIsV3p6 = TRUE
 ##library(reshape)
 ##library(reshape2)
 
-library(ggplot2)
+##library(ggplot2)
 
-library(ggpubr)
+##library(ggpubr)
 
-library(plyr)
-library(readr)
-library(dplyr)
+#library(plyr)
+#library(readr)
+#library(dplyr)
 #library(beeswarm)
 
-library(gridExtra)
+#library(gridExtra)
 #library(gplots)
 #library(dunn.test)
 if (tmpIsV3p6) {
@@ -350,7 +350,10 @@ parse_flowjo_CytoML_v12 <- function (files, wsp_file, group = "All Samples")
     for (gate in gate_names) {
       gatingMatrix[, gate] <- flowWorkspace::gh_pop_get_indices(gates[[file_id]],gate)
     }
-    ff <- flowWorkspace::getData(gates[[file_id]], "root")
+if ((unlist(packageVersion("flowWorkspace"))[1] == 3) && (unlist(packageVersion("flowWorkspace"))[2] <= (32)))     
+{ff <- flowWorkspace::getData(gates[[file_id]], "root")}
+    else {ff <- flowWorkspace::gh_pop_get_data(gates[[file_id]], "root")}
+
     ff@exprs[, "Time"] <- ff@exprs[, "Time"] * 100
     result[[file]] <- list(flowFrame = ff, gates = gatingMatrix)
   }
@@ -493,6 +496,7 @@ parse_flowjo_CytoML_v12 <- function (files, wsp_file, group = "All Samples")
 
 ## Internal tool: extract meta-clusters count ratio in percent
 get_pctgsMT <- function(fSOM,metacl, meta_names = NULL){
+  `%>%` <- magrittr::`%>%`
   cell_ids <- fSOM$metaData
   files <- sapply(seq_len(length(cell_ids)),
                   function(i){
@@ -515,6 +519,7 @@ get_pctgsMT <- function(fSOM,metacl, meta_names = NULL){
 
 ## Internal tool: extract absolute count of meta-clusters
 get_abstgsMT <- function(fSOM,metacl, meta_names = NULL){
+  `%>%` <- magrittr::`%>%`
   cell_ids <- fSOM$metaData
   files <- sapply(seq_len(length(cell_ids)),
                   function(i){
@@ -644,7 +649,7 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
                              labels=ListSignif[1])
                     }
        }
-       beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
+        beeswarm::beeswarm(PP ~ TreatmentFSOM,data=plotDf,add=T,cex=.5,col="red")
        return(pairwisePval)
     })
     ## finish the construction of PvalTable, write csv files
@@ -719,11 +724,11 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
         if (ClustHeat) {
           par(cex.main=.5)
-            gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
+            gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = gplots::bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
         }
-            gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = bluered(100),cellnote = pvalAnnotationMatrix[-1,],
+            gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gplots::bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
     }
