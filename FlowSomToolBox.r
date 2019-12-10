@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.10.1
+## Version 0.10.2
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -706,11 +706,11 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
 
             gplots::heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
-                      notecex=.5,margins=c(colMarginSize,rowMarginSize))
+                      notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
         }
         gplots::heatmap.2(meanMatrix,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
                   notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
-                  notecex=.5,margins=c(colMarginSize,rowMarginSize))
+                  notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
     } else {
         colMarginSize=20-18*exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/10)
         rowMarginSize=20-18*exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/10)
@@ -726,11 +726,11 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
           par(cex.main=.5)
             gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = gplots::bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
-                      distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
+                      distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
         }
             gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gplots::bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
-                      distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
+                      distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
     }
     par(cex.main=1)
     matrixPval4Heat=apply(as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")],c(1,2),function(x){
@@ -752,20 +752,20 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         if (ClustHeat) {
             gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                       trace="none",main="log10(Dunn p-values)",cexRow = rowCex4Plot,cexCol=colCex4Plot,margins=c(colMarginSize,rowMarginSize),density.info="none",
-                      cellnote = matrixAnnot4Heat,notecol = "blue")
+                      cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="")
 }
             gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                       trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Dunn p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
-                      cellnote = matrixAnnot4Heat,notecol = "blue")
+                      cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="")
     } else {
              if (ClustHeat) {
                  gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                            trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Tukey p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
-                           cellnote = matrixAnnot4Heat,notecol = "blue")
+                           cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="")
              }
              gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                        trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Tukey p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
-                       cellnote = matrixAnnot4Heat,notecol = "blue") }
+                       cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="") }
     dev.off()
     retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
 
