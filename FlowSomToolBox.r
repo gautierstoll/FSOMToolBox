@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.10.2
+## Version 0.10.4
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -959,13 +959,15 @@ DownLoadCytoData <- function(dirFCS="",gatingName,fcsPattern = "Tube",compensate
 buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
 {
   set.seed(fSOMSeed)
-    ff<-fSOMDloaded$flJoDataGated$flowSet[[1]]
-    fSOMNicePrettyColNames=gsub(" <.*", "", fSOMDloaded$fSOMData$prettyColnames)
+  if (length(which(names(fSOMDloaded) == "fSOMData")) > 0 )
+  {fSOMData = fSOMDloaded$fSOMData} else {fSOMData = fSOMDloaded}
+    ## ff<-fSOMDloaded$flJoDataGated$flowSet[[1]]
+    fSOMNicePrettyColNames=gsub(" <.*", "", fSOMData$prettyColnames)
     colNamesIndices=unlist(lapply(prettyNames,function(name){which(fSOMNicePrettyColNames == name)}))
     print("Catched col indices:")
     print(colNamesIndices)
-    channels_of_interest <-  colnames(ff)[colNamesIndices]
-    fSOM<-FlowSOM::BuildSOM(fSOMDloaded$fSOMData,colsToUse = channels_of_interest,silent = FALSE,xdim=clustDim,ydim=clustDim,rlen=10,init=FALSE,distf=2)
+    ##channels_of_interest <-  fSOMData$prettyColnames[colNamesIndices]
+    fSOM<-FlowSOM::BuildSOM(fSOMData,colsToUse = colNamesIndices,silent = FALSE,xdim=clustDim,ydim=clustDim,rlen=10,init=FALSE,distf=2)
     fSOM<-FlowSOM::BuildMST(fSOM,silent = FALSE,tSNE=FALSE)
     fSOM$prettyColnames =  fSOMNicePrettyColNames
     metacl<-FlowSOM::metaClustering_consensus(fSOM$map$codes,k=metaClNb,seed=fSOMSeed)
@@ -975,7 +977,7 @@ buildFSOMTree <- function(fSOMDloaded,prettyNames,clustDim,metaClNb,fSOMSeed)
 
 ## User tool: plot figures, use the object created by buildFSOMTree
 ## the treatmentTable should be a dataframe with two column: "Treatment", "files"
-plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalScale=F){
+plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalScale=T){
     if (rmClNb>0) {
         indexKeep =  which(TreeMetacl$fSOMTree$MST$size > sort(TreeMetacl$fSOMTree$MST$size)[rmClNb])} else {indexKeep = 1:length(TreeMetacl$fSOMTree$MST$size)}
     pdf(file=paste(Title,"_TreatmentTree.pdf",sep=""))
