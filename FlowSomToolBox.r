@@ -733,25 +733,39 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
                       distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize))
     }
     par(cex.main=1)
-    matrixPval4Heat=as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")]
+    matrixPval4Heat=apply(as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")],c(1,2),function(x){
+      if (x < 0.0001) {return(-log10(0.0001))}
+      else {return(-log10(x))}
+    })
+    matrixAnnot4Heat=apply(as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")],c(1,2),function(x){
+      if (x < 0.0001){return("****")}
+      else if(x < 0.001){return("***")}
+      else if(x < 0.01){return("**")}
+      else if(x < 0.05){return("*")} 
+      else if (x < 0.1){return(".")} else {return("")}})
+    maxLogPval = max(unlist(matrixPval4Heat))
     colMarginSize=20-18*exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/10)
     rowMarginSize=20-18*exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/10)
     colCex4Plot=exp(-max(sapply(colnames(meanMatrix[-1,]),nchar))/70)
     rowCex4Plot=exp(-max(sapply(row.names(meanMatrix[-1,]),nchar))/70)
     if (Robust) {
         if (ClustHeat) {
-            gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
-                      trace="none",main="Dunn p-values",cexRow = rowCex4Plot,cexCol=colCex4Plot,margins=c(colMarginSize,rowMarginSize),density.info="none")
+            gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
+                      trace="none",main="log10(Dunn p-values)",cexRow = rowCex4Plot,cexCol=colCex4Plot,margins=c(colMarginSize,rowMarginSize),density.info="none",
+                      cellnote = matrixAnnot4Heat,notecol = "blue")
 }
-            gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
-                      trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Dunn p-values",margins=c(colMarginSize,rowMarginSize),density.info="none")
+            gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
+                      trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Dunn p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
+                      cellnote = matrixAnnot4Heat,notecol = "blue")
     } else {
              if (ClustHeat) {
-                 gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray((0:100)/100),
-                           trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Tukey p-values",margins=c(colMarginSize,rowMarginSize),density.info="none")
+                 gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
+                           trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Tukey p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
+                           cellnote = matrixAnnot4Heat,notecol = "blue")
              }
-             gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray((0:100)/100),
-                       trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="Tukey p-values",margins=c(colMarginSize,rowMarginSize),density.info="none") }
+             gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
+                       trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Tukey p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
+                       cellnote = matrixAnnot4Heat,notecol = "blue") }
     dev.off()
     retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
 
