@@ -1,6 +1,6 @@
 ## Authors: Gautier Stoll, Hélène Fohrer-Ting, Estelle Devêvre, Sarah LEVESQUE, Julie LE NAOUR, Juliette PAILLET, Jonathan POL
 ## 2019, INSERM U1138
-## Version 0.10.4
+## Version 0.10.5
 
 ##tmpIsV3p6 = (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][1]) >= 3) & (as.integer(strsplit(strsplit(version$version.string,split=" ")[[1]][3],split=".",fixed=TRUE)[[1]][2]) >= 6) ## for testing R version
 
@@ -767,7 +767,14 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
                        trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Tukey p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
                        cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="") }
     dev.off()
-    retData=list(fSOMnbrs,PvalPairwiseTable,pvalLmMatrix)
+    
+    if (is.table(fSOMnbrs)) {
+      DFSizes = as.data.frame(as.matrix.data.frame(fSOMnbrs))
+      row.names(DFSizes) = row.names(fSOMnbrs)
+      colnames(DFSizes) = colnames(fSOMnbrs)
+    } else {DFSizes = as.data.frame(fSOMnbrs)}
+    
+    retData=list(DFSizes,as.data.frame(PvalPairwiseTable),as.data.frame(pvalLmMatrix))
 
     if(length(MarkerIndex) == 1) {write.table(pvalLmMatrix,gsub("/","_",paste(Title,"_LmPval",Marker,"Metacl.csv",sep=""),fixed=T),sep=";",col.names = NA)} else {
     if (Norm) {write.table(pvalLmMatrix,paste(Title,"_LmPvalNormMetacl.csv",sep=""),sep=";",col.names = NA)}
@@ -1115,4 +1122,30 @@ DataFromMetaClust <- function(FSOMData,TreeMetaCl,MetaClusters)
   return(newFSOMData)
 }
 
-
+# plot2DDensityMetaCl = function(TreeMetaCl,marker1,marker2,metaClusterNames,file)
+#   {
+#   pdf(file)
+#   #ncolGraph = as.integer(sqrt(length(TreeMetaCl$fSOMTree$metaData)))
+#   #nrowGraph = as.integer(length(TreeMetaCl$fSOMTree$metaData)/ncolGraph) + 1
+#   #par(mfrow=c(nrowGraph,ncolGraph))
+# for (index in 1:length(TreeMetaCl$fSOMTree$metaData))
+#   {
+#   
+#   mData = as.data.frame(
+#     TreeMetaCl$fSOMTree$data[
+#       ((TreeMetaCl$fSOMTree$metaData[index][[1]][1]):(TreeMetaCl$fSOMTree$metaData[index][[1]][2])),
+#       c(which(TreeMetaCl$fSOMTree$prettyColnames == marker1),which(TreeMetaCl$fSOMTree$prettyColnames == marker2))])
+#   names(mData) = c("marker1","marker2")
+#   print(str(mData))
+#   mData$Cl = TreeMetaCl$fSOMTree$map$mapping[(TreeMetaCl$fSOMTree$metaData[index][[1]][1]):(TreeMetaCl$fSOMTree$metaData[index][[1]][2]),1]
+#   mData$metaCl = TreeMetaCl$metaCl[mData$Cl]
+#   print(str(mData$metaCl))
+#   tmpIndex = is.element(mData$metaCl,metaClusterNames)
+#   mData = mData[which(tmpIndex),]
+#   mData$metaCl 
+#   print(str(mData$metaCl))
+#   print(ggplot2::ggplot(mData,ggplot2::aes(x=marker1,y=marker2)) + geom_density_2d(ggplot2::aes(color = metaCl)) + 
+#           xlab(marker1) + ylab(marker2) +ggplot2::ggtitle(gsub(".*/","",names(TreeMetaCl$fSOMTree$metaData)[index])))
+#   }
+#   dev.off()
+# }
