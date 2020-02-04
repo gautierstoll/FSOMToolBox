@@ -1,11 +1,10 @@
-#PlotTreeSet that includes metacluster tree
-plotTreeSet <- function(TreeMetacl,markers,Title,rmClNb=0,treatmentTable,globalScale=T){
+plotTreeSetv2 <- function(TreeMetacl,markers,Title,rmClNb,treatmentTable,globalScale=T){
   if (rmClNb>0) {
     indexKeep =  which(TreeMetacl$fSOMTree$MST$size > sort(TreeMetacl$fSOMTree$MST$size)[rmClNb])} else {indexKeep = 1:length(TreeMetacl$fSOMTree$MST$size)}
   pdf(file=paste(Title,"_TreatmentTree.pdf",sep=""))
   ## plot tree of pooled data
-  PlotStarsMSTRm(TreeMetacl$fSOMTree,TreeMetacl$metaCl,paste(Title," MainTree",sep=""),rmClNb)
-  PlotLabelsRm(TreeMetacl$fSOMTree,TreeMetacl$metaClNumber,paste(Title,"_MetaclusterTree",sep=""),rmClNb)
+  PlotStarsMSTRmv2(TreeMetacl,Title,rmClNb)
+  PlotLabelsRmv2(TreeMetacl$fSOMTree,TreeMetacl$metaCl,paste(Title,"_MetaclusterTree",sep=""),rmClNb)
   
   Treatments=unique(treatmentTable$Treatment[which(sapply(tableTreatmentFCS$files,function(files){length(grep(files,names(TreeMetacl$fSOMTree$metaData),fixed=T))>0}))])
   print("Treatments:")
