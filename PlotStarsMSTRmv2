@@ -1,0 +1,20 @@
+PlotStarsMSTRmv2 <- function(fSOM,mainTitle,nbRm=0)
+{
+  fSOM4Plot=list(
+    map=fSOM$fSOMTree$map,
+    prettyColnames=fSOM$fSOMTree$prettyColnames,
+    MST=fSOM$fSOMTree$MST)
+  if (nbRm>0)
+  {
+    indexKeep =  which(fSOM$fSOMTree$MST$size > sort(fSOM$fSOMTree$MST$size)[nbRm])
+    indexRemove  = setdiff((1:length(fSOM$fSOMTree$MST$size)),indexKeep)
+    fSOM4Plot$MST$size=fSOM$fSOMTree$MST$size[indexKeep]
+    fSOM4Plot$map$medianValues=fSOM$fSOMTree$map$medianValues[indexKeep,]
+    fSOM4Plot$MST$graph=igraph::induced_subgraph(fSOM$fSOMTree$MST$graph,indexKeep)
+    fSOM4Plot$MST$l = fSOM$fSOMTree$MST$l[indexKeep,]
+    PlotStarsBigLeg(fSOM4Plot,backgroundValues = as.factor(fSOM$metaCl[indexKeep]), main=paste(mainTitle,"_",fSOM$gatedPopulation,"_Clusters=",fSOM$fSOMTree$map$nNodes,"_Metaclusters=",fSOM$NumberOfMetacl))
+  }
+  else
+  {PlotStarsBigLeg(fSOM4Plot,backgroundValues = as.factor(fSOM$metaCl), main=paste(mainTitle,"_",fSOM$fSOMTree$gatedPopulation))}
+  
+}
