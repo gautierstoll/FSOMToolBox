@@ -19,10 +19,11 @@ buildFSOMTreev2 <- function(tableTreatmentName,dirFCS,gatingName,fcsPattern,comp
   }
   dataGated<-gating_subset_toolBox(data,gatingName)
   fSOM<-FlowSOM::ReadInput(dataGated$flowSet,compensate = compensate,transform = FALSE,scale = FALSE,scaled.center = TRUE,scaled.scale = TRUE,silent = FALSE)
-  return(list(fSOMData=fSOM,flJoDataGated=dataGated))
+  Cytodata<-list(fSOMData=fSOM,flJoDataGated=dataGated)
   
   set.seed(fSOMSeed)
-  
+  if (length(which(names(Cytodata) == "fSOMData")) > 0 )
+  {fSOMData = Cytodata$fSOMData} else {fSOMData = Cytodata}
   ## ff<-fSOMDloaded$flJoDataGated$flowSet[[1]]
   fSOMNicePrettyColNames=gsub(" <.*", "", fSOMData$prettyColnames)
   colNamesIndices=unlist(lapply(prettyNames,function(name){which(fSOMNicePrettyColNames == name)}))
@@ -35,4 +36,4 @@ buildFSOMTreev2 <- function(tableTreatmentName,dirFCS,gatingName,fcsPattern,comp
   metacl<-FlowSOM::metaClustering_consensus(fSOM$map$codes,k=metaClNb,seed=fSOMSeed)
   PlotStarsBigLeg(fSOM,backgroundValues = as.factor(metacl))
   return(list(fSOMTree = fSOM,metaCl = metacl))
-}
+  }
