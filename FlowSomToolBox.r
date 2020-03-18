@@ -600,19 +600,43 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         beeswarm::beeswarm(PP ~ TreatmentFSOM,data=plotDf,main=paste("mtcl",colnames(fSOMnbrs)[metaCl],sep="_"),add=T,cex=.5,col="red")
     }
     par(mfrow=c(6,6),las=2,mar=c(BottomMargin,3,1,.5),mgp=c(1.8,.8,0))
-
     PvalPairwiseTable = sapply((1:metaclNumber),function(metaCl) ## construct pval table of tukey pairwise comparison test, boxplots with p-values annotation
     {
-        plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM)
+        plotDf=data.frame(PP=fSOMnbrs[,metaCl],TreatmentFSOM=treatmentsFSOM,noData=rep(1,length(treatmentsFSOM)))
         if (Robust) {
-            invisible(capture.output(tmp <- dunn.test::dunn.test(plotDf$PP,plotDf$TreatmentFSOM)))
-            pairwisePval=tmp$P
-            names(pairwisePval) = gsub(" ","",tmp$comparisons,fixed=T)
+          invisible(capture.output(tmpNoData <- dunn.test::dunn.test(plotDf$noData,plotDf$TreatmentFSOM,table=F)))
+          pairwisePval=tmpNoData$P
+          names(pairwisePval) = gsub(" ","",tmpNoData$comparisons,fixed=T) ## create template
+          if (length(unique(plotDf$TreatmentFSOM[which(is.finite(plotDf$PP))])) > 2 ){
+          invisible(capture.output(tmp <- dunn.test::dunn.test(plotDf$PP,plotDf$TreatmentFSOM)
+                                       ##tryCatch({dunn.test::dunn.test(plotDf$PP,plotDf$TreatmentFSOM)},
+                  ##error = function(e){
+                  ##  print(str(unique(treatmentsFSOM)))
+                  ##  print("haha")
+                  ##  data.frame(P=rep(1,length(plotDf$PP)*(length(plotDf$PP)-1)/2),comparisons = combn(unique(treatmentsFSOM),2,function(x){paste(x[1],x[2],sep=" - ")}))
+                  ##  })
+                  ))
+            pairwiseSignPval=tmp$P
+            names(pairwiseSignPval) = gsub(" ","",tmp$comparisons,fixed=T)
+            for(name in names(pairwiseSignPval)){
+              pairwisePval[[name]] = pairwiseSignPval[[name]]
+              }}
+            
         } else {
-            pairwisePval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM[,4]
-            names(pairwisePval)=row.names(TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM)
+          pairwisePval=TukeyHSD(aov(noData ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM[,4]
+          pairwisePval[]=1
+          names(pairwisePval)=row.names(TukeyHSD(aov(noData ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM) ##create template
+          if (length(unique(plotDf$TreatmentFSOM[which(is.finite(plotDf$PP))])) > 2 ){ 
+          pairwiseSignPval=TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM[,4]
+          names(pairwiseSignPval)=row.names(TukeyHSD(aov(PP ~ TreatmentFSOM,data=plotDf))$TreatmentFSOM)
+          for(name in names(pairwiseSignPval)){
+            pairwisePval[[name]] = pairwiseSignPval[[name]]
+          }
+          }
+            
         }
         ListSignif=(sapply(1:length(pairwisePval),function(index){
+            if (!is.finite(pairwisePval[index])){return(c())}
             if(pairwisePval[index] < 0.0001){return(c("****",strsplit(names(pairwisePval)[index],split = "-")[[1]]))}
             else if(pairwisePval[index] < 0.001){return(c("***",strsplit(names(pairwisePval)[index],split = "-")[[1]]))}
             else if(pairwisePval[index] < 0.01){return(c("**",strsplit(names(pairwisePval)[index],split = "-")[[1]]))}
@@ -672,7 +696,16 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         row.names(pvalLmMatrix)=gsub(ControlTreatment,"",row.names(pvalLmMatrix),fixed=T)
         row.names(pvalLmMatrix)=gsub("-","",row.names(pvalLmMatrix),fixed=T)
     } else {
-        pvalLmMatrix = t(do.call(rbind,lapply(colnames(fSOMnbrs),function(metaCl){summary(lm(y ~ treat,data = DF4lm[which(DF4lm$metaCl == metaCl),]))$coefficient[-1,4]})))
+        pvalLmMatrix = t(do.call(rbind,lapply(colnames(fSOMnbrs),function(metaCl){
+          SubDF4Lm = DF4lm[which(DF4lm$metaCl == metaCl),]
+          SubDF4Lm$noData = rep(1,length(SubDF4Lm$y))
+          retPval = summary(lm(noData ~ treat,data = SubDF4Lm))$coefficient[-1,4] ##create template
+          if (length(unique(SubDF4Lm$treat[which(is.finite(SubDF4Lm$y))])) > 2) {
+            SignRetPval = summary(lm(y ~ treat,data = DF4lm[which(DF4lm$metaCl == metaCl),]))$coefficient[-1,4]
+            for(name in names(SignRetPval)){retPval[[name]] = SignRetPval[[name]]}
+          }
+          return(retPval)
+        })))
         row.names(pvalLmMatrix) = setdiff(unique(DF4lm$treat),ControlTreatment)
     }
     colnames(pvalLmMatrix) = paste("mtcl",colnames(fSOMnbrs),sep= "_")
@@ -690,7 +723,8 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     attr(meanMatrix,"call") = NULL
     colnames(meanMatrix) = paste("mtcl",colnames(meanMatrix),sep= "_")
     pvalAnnotationMatrix = apply(pvalLmMatrix,c(1,2),function(x){
-    if (x < 0.0001){return("****")}
+    if (!is.finite(x)){return("")}  
+            else if (x < 0.0001){return("****")}
             else if(x < 0.001){return("***")}
             else if(x < 0.01){return("**")}
             else if(x < 0.05){return("*")} else {return("")}})
@@ -703,7 +737,6 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         if (Robust) {heatTitle = paste("Median MFI of ",PlotLab,sep="")} else {heatTitle = paste("Mean MFI of ",PlotLab,sep="")}
         par(cex.main=exp(-nchar(heatTitle)/70))
         if (ClustHeat) {
-
             gplots::heatmap.2(meanMatrix,Rowv=F,Colv=T,dendrogram = "column",scale="none",col = heat.colors(100),cellnote = pvalAnnotationMatrix,
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
                       notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
@@ -720,13 +753,18 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         else {heatTitle = paste("Mean ",PlotLab,sep="")}
         par(cex.main=exp(-max(c(nchar(heatTitle),(nchar(ControlTreatment)+18)))/70))
         heatTitle=paste(heatTitle,"\n(rel. to ",ControlTreatment,", scaled)",sep="")
-        meanMatrix=apply(meanMatrix,2,function(x){(x-x[1])/sd(x,na.rm=T)})
+        meanMatrix=apply(meanMatrix,2,function(x){
+          varCol = sd(x,na.rm=T)
+          if (varCol == 0) {varCol = 1} ## contant column, no scale
+          return((x-x[1])/varCol)
+          })
         meanMatrix=meanMatrix[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")] ## get the correct ordering
         if (ClustHeat) {
           par(cex.main=.5)
             gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=T,dendrogram = "column",scale="none",col = gplots::bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
-                      distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
+                      ##distfun=function(x){dist(t(apply(meanMatrix,2,function(y){scale(y)})))},notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
+                      notecex=.5,margins=c(colMarginSize,rowMarginSize),key.xlab = "",key.title="")
         }
             gplots::heatmap.2(meanMatrix[-1,],Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gplots::bluered(100),cellnote = pvalAnnotationMatrix[-1,],
                       notecol = "black",trace = "none",cexRow = rowCex4Plot,cexCol=colCex4Plot,density.info="none",main=heatTitle,
@@ -734,11 +772,13 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
     }
     par(cex.main=1)
     matrixPval4Heat=apply(as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")],c(1,2),function(x){
-      if (x < 0.0001) {return(-log10(0.0001))}
+      if (!is.finite(x)) {return(0)}
+      else if (x < 0.0001) {return(-log10(0.0001))}
       else {return(-log10(x))}
     })
     matrixAnnot4Heat=apply(as.matrix(PvalPairwiseTable)[,paste("mtcl_",unique(TreeMetaCl$metaCl),sep="")],c(1,2),function(x){
-      if (x < 0.0001){return("****")}
+      if (!is.finite(x)){return("")}
+      else if (x < 0.0001){return("****")}
       else if(x < 0.001){return("***")}
       else if(x < 0.01){return("**")}
       else if(x < 0.05){return("*")} 
@@ -752,20 +792,20 @@ BoxPlotMetaClustFull <- function(TreeMetaCl,Title,treatmentTable,ControlTreatmen
         if (ClustHeat) {
             gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                       trace="none",main="log10(Dunn p-values)",cexRow = rowCex4Plot,cexCol=colCex4Plot,margins=c(colMarginSize,rowMarginSize),density.info="none",
-                      cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="")
-}
+                      cellnote = matrixAnnot4Heat,notecol = "blue",notecex = .5,key.xlab = "",key.title="")
+        }
             gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                       trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Dunn p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
-                      cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="")
+                      cellnote = matrixAnnot4Heat,notecol = "blue",notecex = .5,key.xlab = "",key.title="")
     } else {
              if (ClustHeat) {
                  gplots::heatmap.2(matrixPval4Heat,Rowv=T,Colv=T,dendrogram = "both",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                            trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Tukey p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
-                           cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="")
+                           cellnote = matrixAnnot4Heat,notecol = "blue",notecex = .5,key.xlab = "",key.title="")
              }
              gplots::heatmap.2(matrixPval4Heat,Rowv=F,Colv=F,dendrogram = "none",scale="none",col = gray(1-((0:100)/100*maxLogPval/(-log10(0.0001)))),
                        trace="none",cexRow = rowCex4Plot,cexCol=colCex4Plot,main="log10(Tukey p-values)",margins=c(colMarginSize,rowMarginSize),density.info="none",
-                       cellnote = matrixAnnot4Heat,notecol = "blue",key.xlab = "",key.title="") }
+                       cellnote = matrixAnnot4Heat,notecol = "blue",notecex = .5,key.xlab = "",key.title="") }
     dev.off()
     
     if (is.table(fSOMnbrs)) {
